@@ -49,6 +49,7 @@ export default function SignUpForm() {
   const [states, setStates] = useState<{ value: string; label: string }[]>([]);
   const [cities, setCities] = useState<{ value: string; label: string }[]>([]);
 
+  console.log("Selected state:", selectedState);
   // Get all countries for select options
   const countries = Country.getAllCountries().map((country) => ({
     value: country.isoCode,

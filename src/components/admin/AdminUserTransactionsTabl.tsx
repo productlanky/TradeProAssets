@@ -17,6 +17,16 @@ interface Props {
     userId: string;
 }
 
+type Transaction = {
+  id: number;
+  user_id: string;
+  amount: number;
+  type: "deposit" | "withdrawal";
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+};
+
+
 const statusOptions = [
     { label: "Pending", value: "pending" },
     { label: "Approved", value: "approved" },
@@ -24,7 +34,7 @@ const statusOptions = [
 ];
 
 export default function AdminUserTransactionsTable({ userId }: Props) {
-    const [transactions, setTransactions] = useState<any[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -119,7 +129,9 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
 
         // Update local state
         setTransactions((prev) =>
-            prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+            prev.map((t) =>
+                t.id === id ? { ...t, status: newStatus as Transaction["status"] } : t
+            )
         );
 
         toast.success("Transaction status and balance updated");

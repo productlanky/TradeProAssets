@@ -1,5 +1,5 @@
 import React from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -10,14 +10,18 @@ const CRYPTO_OPTIONS = [
   { label: "Ethereum", value: "ETH" },
 ];
 
-type WithdrawFormFields = {
+export type WithdrawFormFields = {
   amount: number;
   crypto: string;
   address: string;
   password: string;
 };
 
-export default function WithdrawForm({ onSubmit }: { onSubmit: any }) {
+export default function WithdrawForm({
+  onSubmit,
+}: {
+  onSubmit: SubmitHandler<WithdrawFormFields>;
+}) {
   const {
     register,
     control,

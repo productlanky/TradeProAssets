@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import Button from "../ui/button/Button";
+import Image from "next/image";
 
 type KYCStatus = "pending" | "reviewing" | "approved" | "rejected";
 
@@ -19,10 +20,11 @@ export default function KYCUpload() {
 
     useEffect(() => {
         return () => {
-            frontUrl && URL.revokeObjectURL(frontUrl);
-            backUrl && URL.revokeObjectURL(backUrl);
+            if (frontUrl) URL.revokeObjectURL(frontUrl);
+            if (backUrl) URL.revokeObjectURL(backUrl);
         };
     }, [frontUrl, backUrl]);
+
 
     useEffect(() => {
         const fetchKYC = async () => {
@@ -31,7 +33,7 @@ export default function KYCUpload() {
             } = await supabase.auth.getUser();
 
             if (user) {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from("kyc_requests")
                     .select("status")
                     .eq("user_id", user.id)
@@ -94,7 +96,7 @@ export default function KYCUpload() {
                 data: { user },
             } = await supabase.auth.getUser();
 
-            const { data: existing, error: fetchError } = await supabase
+            const { data: existing } = await supabase
                 .from("kyc_requests")
                 .select("id")
                 .eq("user_id", user?.id)
@@ -191,7 +193,8 @@ export default function KYCUpload() {
                     </div>
                 </div>
                 {previewUrl && (
-                    <img
+                    <Image
+                        sizes="100%"
                         src={previewUrl}
                         alt={`${label} Preview`}
                         className="rounded-lg border w-full dark:border-gray-700"
@@ -205,7 +208,7 @@ export default function KYCUpload() {
         <div className="mx-auto mt-10 space-y-6">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Upload KYC Documents</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-                Upload a clear image of the front and back of your National ID or Driver's License.
+                Upload a clear image of the front and back of your National ID or Driver&apos;s License.
             </p>
 
             {kycStatus === "reviewing" ? (

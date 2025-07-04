@@ -63,7 +63,7 @@ export default function UserInvestments() {
         console.error("Investments fetch error:", error.message);
       } else if (data) {
         setInvestments(
-          data.map((inv: any) => ({
+          data.map((inv) => ({
             ...inv,
             investment_plans: Array.isArray(inv.investment_plans)
               ? inv.investment_plans[0]

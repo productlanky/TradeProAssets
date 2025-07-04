@@ -49,7 +49,7 @@ export default function InviteFriends() {
         <div className="max-w-3xl mx-auto mt-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:bg-white/[0.03] dark:border-gray-800">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Invite your friends</h2>
             <p className="text-gray-500 text-sm dark:text-gray-400 mb-6 font-normal">
-                Insert your friend's addresses and send them invitations to join {companyName}!
+                Insert your friend&apos;s addresses and send them invitations to join {companyName}!
             </p>
 
             {/* Invite by Email */}

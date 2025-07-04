@@ -16,7 +16,7 @@ const DepositPage = () => {
   const [transactionId, setTransactionId] = useState<string | null>(null);
 
   const bitcoinAddress = "bc1qxyz1234567890youraddress";
-
+  console.log(receiptFile)
   useEffect(() => {
     if (step === "countdown" && countdown > 0) {
       const interval = setInterval(() => setCountdown(c => c - 1), 1000);

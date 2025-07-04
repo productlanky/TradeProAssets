@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
-import Input from "../form/input/InputField";
-import Button from "../ui/button/Button";
-import Label from "../form/Label";
 import { validate as validateBitcoin } from "bitcoin-address-validation";
-import Alert from "../ui/alert/Alert";
-import Select from "../form/Select";
 import WithdrawAlert from "./WithdrawAlert";
 import WithdrawForm from "./WithdrawForm";
 
@@ -20,23 +15,27 @@ type WithdrawalForm = {
     password: string;
 };
 
-const CRYPTO_OPTIONS = [
-    { label: "Bitcoin", value: "BTC" },
-    { label: "Ethereum", value: "ETH" },
-];
+type Tier = {
+    level: string;
+    min_referrals: number;
+    deposit_required: number;
+};
+
+type Profile = {
+    id: string;
+    balance: number;
+    withdrawal_password?: string;
+    tiers?: Tier[];
+};
 
 export default function WithdrawPage() {
-    const [profile, setProfile] = useState<any>(null);
-    const [kycStatus, setKycStatus] = useState<string>("pending");
-    const [maxWithdrawAmount, setMaxWithdrawAmount] = useState<number>(0);
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [kycStatus, setKycStatus] = useState("pending");
+    const [maxWithdrawAmount, setMaxWithdrawAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
     const {
-        register,
-        control,
-        handleSubmit,
         reset,
-        formState: { errors },
     } = useForm<WithdrawalForm>({
         defaultValues: {
             crypto: "BTC",
@@ -50,17 +49,19 @@ export default function WithdrawPage() {
 
             const { data: profileData, error } = await supabase
                 .from("profiles")
-                .select("*, tiers(*)")
+                .select("id, balance, withdrawal_password, tiers (*)")
                 .eq("id", user.id)
                 .single();
 
             if (error || !profileData) {
+                console.log("Failed to load profile:", error);
                 toast.error("Failed to load profile.");
                 return;
             }
 
             setProfile(profileData);
-            setMaxWithdrawAmount(profileData.tiers?.min_referrals * 100);
+            // Use the first tier's min_referrals if tiers exist, otherwise default to 0
+            setMaxWithdrawAmount(profileData.tiers && profileData.tiers.length > 0 ? profileData.tiers[0].min_referrals * 100 : 50);
             setIsLoading(false);
 
             const { data: kyc } = await supabase
@@ -74,14 +75,9 @@ export default function WithdrawPage() {
     }, []);
 
     const validateAddress = (crypto: string, address: string) => {
-        switch (crypto) {
-            case "BTC":
-                return validateBitcoin(address);
-            case "ETH":
-                return /^0x[a-fA-F0-9]{40}$/.test(address);
-            default:
-                return false;
-        }
+        if (crypto === "BTC") return validateBitcoin(address);
+        if (crypto === "ETH") return /^0x[a-fA-F0-9]{40}$/.test(address);
+        return false;
     };
 
     const onSubmit = async (data: WithdrawalForm) => {
@@ -124,19 +120,18 @@ export default function WithdrawPage() {
                 amount: data.amount,
                 photo_url: data.address,
                 status: "pending",
-                crypto_type: data.crypto,
             },
         ]);
 
         if (error) {
+            console.log("Withdrawal error:", error);
             toast.error("Withdrawal failed.");
         } else {
             await supabase.from("notifications").insert([
                 {
                     user_id: profile.id,
                     title: "Withdrawal Placed",
-                    message:
-                        "Your withdrawal was submitted successfully and will be processed within 4 working days.",
+                    message: "Your withdrawal was submitted successfully and will be processed within 4 working days.",
                     type: "withdrawal",
                 },
             ]);
@@ -153,9 +148,8 @@ export default function WithdrawPage() {
                     kycStatus={kycStatus}
                     withdrawalPasswordSet={!!profile?.withdrawal_password}
                 />
-                <WithdrawForm onSubmit={handleSubmit(onSubmit)} />
+                <WithdrawForm onSubmit={onSubmit} />
             </div>
         </div>
-
     );
 }

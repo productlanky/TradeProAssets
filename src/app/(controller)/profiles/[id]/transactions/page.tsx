@@ -5,7 +5,7 @@ import { ChevronLeftIcon } from '@/icons';
 import Link from 'next/link';
 import React, { use } from 'react'
 
-export default function page({ params }: { params: Promise<{ id: string }> }) {
+export default function AdminUserTransactionsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
 
     return (

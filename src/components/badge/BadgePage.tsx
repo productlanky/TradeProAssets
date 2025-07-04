@@ -107,13 +107,13 @@ export default function BannerPage() {
           <Progress value={getProgressToNextTier()} className="h-3 rounded-lg" />
 
           <p className="text-xs text-gray-500 mt-2 dark:text-gray-400">
-            You're {getProgressToNextTier()}% of the way there 🚀
+            You&apos;re {getProgressToNextTier()}% of the way there 🚀
           </p>
         </div>
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 text-center">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">
-            🎉 You've unlocked the highest tier!
+            🎉 You&apos;ve unlocked the highest tier!
           </h3>
           <p className="text-sm text-muted-foreground">
             Welcome to the <strong>Diamond</strong> tier.

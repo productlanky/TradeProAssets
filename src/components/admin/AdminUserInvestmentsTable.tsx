@@ -46,7 +46,7 @@ export default function AdminUserInvestmentsTable({ userId }: Props) {
                 return;
             }
 
-            const formatted = data.map((inv: any) => ({
+            const formatted = data.map((inv) => ({
                 id: inv.id,
                 amount: inv.amount,
                 plan_id: inv.plan_id,

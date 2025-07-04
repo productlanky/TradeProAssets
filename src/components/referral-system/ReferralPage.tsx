@@ -10,11 +10,24 @@ import ReferredUsersTable from "./ReferredUsersTable";
 import { useRef } from "react";
 import Button from "../ui/button/Button";
 
+
+type ReferredUser = {
+  id: string;
+  bonus: number;
+  referred_by: string;
+  created_at: string;
+  profiles: {
+    email: string;
+    created_at: string;
+  };
+};
+
+
 export default function ReferralPage() {
   const [referralLink, setReferralLink] = useState("");
   const [totalReferred, setTotalReferred] = useState(0);
   const [referralBonus, setReferralBonus] = useState(0);
-  const [referredUsers, setReferredUsers] = useState<any[]>([]);
+  const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([]);
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yourapp.com";
 
@@ -50,7 +63,7 @@ export default function ReferralPage() {
     }
 
     fetchReferralInfo();
-  }, []);
+  }, [baseUrl]);
 
   const qrRef = useRef<HTMLCanvasElement>(null);
 

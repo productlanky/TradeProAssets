@@ -20,7 +20,8 @@ const CopyLinkInput: React.FC<CopyLinkInputProps> = ({
             setCopied(true);
             toast.success('Link copied!');
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch (error) {
+            console.log("Failed to copy link:", error);
             toast.error("Failed to copy");
         }
     };

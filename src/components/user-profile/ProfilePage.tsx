@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import UserMetaCard from './UserMetaCard';
 import UserInfoCard from './UserInfoCard';
 import UserAddressCard from './UserAddressCard';
@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import SetWithdrawalPassword from './SetWithdrawalPassword';
 import KYCUpload from './KycUpload';
+import Loading from '../ui/Loading';
 
 export interface ProfileType {
     id: string;
@@ -38,7 +39,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const fetchProfile = async () => {
+    const fetchProfile = useCallback(async () => {
         setLoading(true);
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -67,12 +68,15 @@ export default function ProfilePage() {
         } else {
             setProfile({ ...data, refresh: fetchProfile });
         }
-    };
+    }, [router]);
 
     useEffect(() => {
         fetchProfile();
-    }, []);
+    }, [fetchProfile]);
 
+    if (loading) {
+        return <Loading />;
+    }
     if (!profile) return <div className="text-center text-red-500">Could not load profile.</div>;
 
     return (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React from "react";
 
 interface KycDocumentCardProps {
@@ -25,7 +26,10 @@ export default function KycDocumentCard({
                         {frontImageUrl && (
                             <div>
                                 <p className="text-sm text-gray-500 mb-1">Front of ID</p>
-                                <img
+                                <Image
+                                    sizes="100%"
+                                    width={300}
+                                    height={300}
                                     src={frontImageUrl}
                                     alt="Front ID"
                                     className="w-full rounded-lg border dark:border-gray-700"
@@ -36,7 +40,10 @@ export default function KycDocumentCard({
                         {backImageUrl && (
                             <div>
                                 <p className="text-sm text-gray-500 mb-1">Back of ID</p>
-                                <img
+                                <Image
+                                    sizes="100%"
+                                    width={300}
+                                    height={300}
                                     src={backImageUrl}
                                     alt="Back ID"
                                     className="w-full rounded-lg border dark:border-gray-700"

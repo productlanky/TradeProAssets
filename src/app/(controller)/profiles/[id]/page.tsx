@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { use } from "react";
+import React, { useEffect, useState, use } from "react";
 import { supabase } from "@/lib/supabase/client";
 import AdminUserProfileEditor from "@/components/admin/AdminProfileEditor";
 import Link from "next/link";
 import { ChevronLeftIcon } from "@/icons";
 
-export default function UserDetails({ params }: { params: Promise<{ id: string }> }) {
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  gender: string;
+  phone: string;
+  country: string;
+  state: string;
+  city: string;
+  zip: string;
+  address: string;
+  balance: number;
+  dob: string;
+  created_at: string;
+  kyc_status?: string;
+}
+
+export default function Page({ params }: Props) {
+  // ✅ unwrap the promise
   const { id } = use(params);
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
-      if (!id) {
-        console.warn("No id in URL.");
-        setLoading(false); // <--- prevent infinite loading
-        return;
-      }
-
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -30,7 +46,7 @@ export default function UserDetails({ params }: { params: Promise<{ id: string }
       if (error) {
         console.error("Error fetching user:", error.message);
       } else {
-        setUser(data);
+        setUser(data as Profile);
       }
 
       setLoading(false);
@@ -46,7 +62,7 @@ export default function UserDetails({ params }: { params: Promise<{ id: string }
     <div className="p-5">
       <div className="w-full px-10 sm:pt-10 mx-auto mb-5">
         <Link
-          href={`/controlPanel`}
+          href="/controlPanel"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
           <ChevronLeftIcon />
@@ -57,8 +73,7 @@ export default function UserDetails({ params }: { params: Promise<{ id: string }
         <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
           {user.first_name} {user.last_name} Profile
         </h3>
-        <AdminUserProfileEditor
-          id={id} />
+        <AdminUserProfileEditor id={id} />
       </div>
     </div>
   );

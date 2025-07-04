@@ -1,5 +1,7 @@
 import SignUpForm from "@/components/auth/SignUpForm";
+import Loading from "@/components/ui/Loading";
 import { Metadata } from "next";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Next.js SignUp Page | TailAdmin - Next.js Dashboard Template",
@@ -8,5 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function SignUp() {
-  return <SignUpForm />;
+  return <Suspense fallback={<Loading />}>
+    <SignUpForm />
+  </Suspense>;
 }
