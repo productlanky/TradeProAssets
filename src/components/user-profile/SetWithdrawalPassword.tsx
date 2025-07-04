@@ -8,7 +8,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
-import bcrypt from "bcryptjs"; // Use bcryptjs on client-side (or hash on server if needed)
+// import bcrypt from "bcryptjs"; // Use bcryptjs on client-side (or hash on server if needed)
 
 interface SetWithdrawalPasswordProps {
     refresh?: () => void;
@@ -38,12 +38,12 @@ export default function SetWithdrawalPassword({
         setLoading(true);
 
         try {
-            const hashed = bcrypt.hashSync(password, 10); // hash password client-side
+            // const hashed = bcrypt.hashSync(password, 10); // hash password client-side
 
             const { data: { user } } = await supabase.auth.getUser();
             const { error } = await supabase
                 .from("profiles")
-                .update({ withdrawal_password: hashed })
+                .update({ withdrawal_password: password })
                 .eq("id", user?.id);
 
             if (error) {
