@@ -19,6 +19,9 @@ import DatePicker from "../form/date-picker";
 import { Country, State, City } from "country-state-city";
 import PhoneInput from "../form/group-input/PhoneInput";
 import { nanoid } from 'nanoid';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth'
+import { auth } from "@/lib/firebase/client";
+import { signUp } from "@/lib/appwrite/auth";
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -135,60 +138,72 @@ export default function SignUpForm() {
     const cleanedPhone = phone.startsWith('+') ? phone.slice(1) : phone;
     const fullPhoneNumber = `${countryCode}${cleanedPhone}`;
 
-    const { data: signUpData, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: fname,
-          last_name: lname,
-          gender,
-          date_of_birth,
-          phone: fullPhoneNumber,
-          country: fullCountryName,
-          state: fullStateName,
-          city,
-          address,
-          zip,
-          referred_by,
-          referral_code,
-        },
-        emailRedirectTo: `${window.location.origin}/callback`,
-      },
-    });
+    const name = `${fname} ${lname}`;
 
-    if (error) {
+    try {
+      // Create user with email and password
+      await signUp(email, password, name);
+
+
+      // const { data: signUpData, error } = await supabase.auth.signUp({
+      //   email,
+      //   password,
+      //   options: {
+      //     data: {
+      //       first_name: fname,
+      //       last_name: lname,
+      //       gender,
+      //       date_of_birth,
+      //       phone: fullPhoneNumber,
+      //       country: fullCountryName,
+      //       state: fullStateName,
+      //       city,
+      //       address,
+      //       zip,
+      //       referred_by,
+      //       referral_code,
+      //     },
+      //     emailRedirectTo: `${window.location.origin}/callback`,
+      //   },
+      // });
+
+      // if (error) {
+      //   setLoading(false);
+      //   console.log(error);
+      //   toast(error.message === "User already registered" ? "Email already in use. Please sign in instead." : error.message);
+      //   return;
+      // }
+
+      // const user = signUpData?.user;
+
+      // if (user) {
+      //   await supabase.from("profiles").upsert({
+      //     id: user.id,
+      //     email,
+      //     first_name: fname,
+      //     last_name: lname,
+      //     gender,
+      //     dob: date_of_birth,
+      //     phone: fullPhoneNumber,
+      //     country: fullCountryName,
+      //     state: fullStateName,
+      //     city,
+      //     zip,
+      //     address,
+      //     referred_by,
+      //     referral_code,
+      //     created_at: new Date().toISOString()
+      //   });
+      // }
+
+      toast("Check your email to confirm your account.");
+      setTimeout(() => router.push("/signin"), 3000);
+    } catch (error) {
+      console.error("Error signing up:", error);
+      toast("An error occurred while signing up. Please try again.");
+    } finally {
       setLoading(false);
-      console.log(error);
-      toast(error.message === "User already registered" ? "Email already in use. Please sign in instead." : error.message);
-      return;
     }
-
-    const user = signUpData?.user;
-
-    if (user) {
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        email,
-        first_name: fname,
-        last_name: lname,
-        gender,
-        dob: date_of_birth,
-        phone: fullPhoneNumber,
-        country: fullCountryName,
-        state: fullStateName,
-        city,
-        zip,
-        address,
-        referred_by,
-        referral_code,
-        created_at: new Date().toISOString()
-      });
-    }
-
-    setLoading(false);
-    toast("Check your email to confirm your account.");
-    setTimeout(() => router.push("/signin"), 3000);
   };
 
 
