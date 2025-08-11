@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase/client";
+import React, { useState, useEffect } from "react"; 
 import { useDropzone } from "react-dropzone";
 import Button from "@/components/ui/button/Button";
 import { toast } from "sonner";
 import Input from "../form/input/InputField";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, RECEIPTS_BUCKET, storage, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { ID } from "appwrite";
+import { useRouter } from "next/navigation";
 
 const DepositPage = () => {
   const [amount, setAmount] = useState("");
@@ -14,8 +17,9 @@ const DepositPage = () => {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [transactionId, setTransactionId] = useState<string | null>(null);
+  const router = useRouter();
 
-  const bitcoinAddress = "bc1qxyz1234567890youraddress";
+  const bitcoinAddress = process.env.NEXT_PUBLIC_BITCOIN_ADDRESS;
   console.log(receiptFile)
   useEffect(() => {
     if (step === "countdown" && countdown > 0) {
@@ -25,72 +29,69 @@ const DepositPage = () => {
   }, [step, countdown]);
 
   const handleStartDeposit = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const user = await getUser(); // ✅ Get current signed-in user
 
-    if (!amount || parseFloat(amount) < 100) {
-      toast.error("Minimum deposit is $100");
-      return;
-    }
+      if (!amount || parseFloat(amount) < 100) {
+        toast.error("Minimum deposit is $100");
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("transactions")
-      .insert({
-        user_id: user?.id,
-        type: "deposit",
-        amount: parseFloat(amount),
-        status: "pending",
-      })
-      .select("id")
-      .single();
+      // Create the deposit transaction document in Appwrite
+      const transaction = await databases.createDocument(
+        DB_ID,
+        TRANSACTION_COLLECTION,
+        ID.unique(),
+        {
+          userId: user.$id, // make sure your schema field matches
+          type: "deposit",
+          amount: parseFloat(amount),
+          status: "pending",
+        }
+      );
 
-    if (error) {
-      console.log(error);
+      setTransactionId(transaction.$id);
+      setStep("countdown");
+    } catch (error: any) {
+      console.error(error);
       toast.error("Failed to start deposit.");
-      return;
     }
-
-    setTransactionId(data.id);
-    setStep("countdown");
   };
 
   const handleUpload = async (file: File) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const user = await getUser(); // ✅ Get current signed-in user
+      if (!file || !transactionId || !user) return;
 
-    if (!file || !transactionId || !user) return;
+      setIsUploading(true);
 
-    setIsUploading(true);
-    const fileExt = file.name.split(".").pop();
-    const filePath = `receipts/${user.id}/${transactionId}.${fileExt}`;
+      // 1️⃣ Upload file to Appwrite Storage
+      const uploadedFile = await storage.createFile(
+        RECEIPTS_BUCKET, // bucket ID for receipts
+        `receipt-${transactionId}`, // file ID, can also be ID.unique()
+        file
+      );
 
-    const { error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(filePath, file, { upsert: true });
+      // 2️⃣ Get public URL for the file
+      const publicUrl = storage.getFileView(RECEIPTS_BUCKET, uploadedFile.$id);
 
-    if (uploadError) {
-      toast.error("Error uploading receipt.");
-      console.log(uploadError);
-      setIsUploading(false);
-      return;
-    }
+      // 3️⃣ Update the transaction document with the file URL
+      await databases.updateDocument(
+        DB_ID,
+        TRANSACTION_COLLECTION,
+        transactionId,
+        {
+          photoUrl: publicUrl,
+        }
+      );
 
-    const publicUrl = supabase.storage.from("receipts").getPublicUrl(filePath).data.publicUrl;
-
-    const { error: updateError } = await supabase
-      .from("transactions")
-      .update({ photo_url: publicUrl })
-      .eq("id", transactionId);
-
-    setIsUploading(false);
-
-    if (updateError) {
-      toast.error("Error saving receipt URL.");
-      console.log(updateError);
-    } else {
       toast.success("Receipt uploaded successfully!");
+      router.push('/transactions'); // Redirect to transactions page
+    } catch (error) {
+      console.error("Error uploading receipt:", error);
+      toast.error("Error uploading receipt.");
+    } finally {
+      setIsUploading(false);
     }
   };
 

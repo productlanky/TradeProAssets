@@ -2,11 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import Button from "../ui/button/Button";
 import Image from "next/image";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, PROFILE_COLLECTION_ID, RECEIPTS_BUCKET, storage } from "@/lib/appwrite/client";
+import { ID, Query } from "appwrite";
 
 type KYCStatus = "pending" | "reviewing" | "approved" | "rejected";
 
@@ -28,51 +30,61 @@ export default function KYCUpload() {
 
     useEffect(() => {
         const fetchKYC = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
+            try {
+                // Get the logged-in user
+                const user = await getUser();
+                if (!user) return;
 
-            if (user) {
-                const { data } = await supabase
-                    .from("kyc_requests")
-                    .select("status")
-                    .eq("user_id", user.id)
-                    .single();
+                // Query the profile collection for this user
+                const profileResult = await databases.listDocuments(
+                    DB_ID,
+                    PROFILE_COLLECTION_ID,
+                    [Query.equal("userId", user.$id)]
+                );
 
-                if (data?.status) {
-                    setKycStatus(data.status as KYCStatus);
+                if (
+                    !profileResult ||
+                    !profileResult.documents ||
+                    profileResult.documents.length === 0
+                ) {
+                    console.warn("No profile found for this user.");
+                    return;
                 }
-            }
-        };
 
-        fetchKYC();
+                const doc = profileResult.documents[0];
+                setKycStatus(doc.kycStatus); 
+            } catch (error) {
+                console.error("Error fetching KYC status:", error);
+            }
+        }
+         fetchKYC();
     }, []);
 
-    const uploadToStorage = async (file: File, label: "front" | "back") => {
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
 
-        if (!user) {
-            toast.error("Not authenticated.");
+ const uploadToStorage = async (file: File, label: "front" | "back") => {
+        try {
+            // Get logged-in user
+            const user = await getUser();
+            if (!user) {
+                console.error("Not authenticated.");
+                return null;
+            }
+
+            // Upload file to Appwrite Storage
+            const upload = await storage.createFile(
+                RECEIPTS_BUCKET,
+                ID.unique(),
+                file
+            );
+
+            // Get a public URL for the uploaded file
+            const publicUrl = storage.getFileView(RECEIPTS_BUCKET, upload.$id);
+
+            return publicUrl;
+        } catch (error) {
+            console.error(`Failed to upload ${label} image:`, error);
             return null;
         }
-
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${label}_${uuidv4()}.${ext}`;
-
-        const { error } = await supabase.storage.from("kyc-documents").upload(path, file, {
-            upsert: true,
-        });
-
-        if (error) {
-            console.error(error);
-            toast.error(`Failed to upload ${label} image.`);
-            return null;
-        }
-
-        const { data } = supabase.storage.from("kyc-documents").getPublicUrl(path);
-        return data.publicUrl;
     };
 
     const handleSubmit = async () => {
@@ -92,52 +104,56 @@ export default function KYCUpload() {
         const backImageUrl = await uploadToStorage(backFile, "back");
 
         if (frontImageUrl && backImageUrl) {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-
-            const { data: existing } = await supabase
-                .from("kyc_requests")
-                .select("id")
-                .eq("user_id", user?.id)
-                .single();
-
-            let updateError;
-
-            if (existing) {
-                const { error } = await supabase
-                    .from("kyc_requests")
-                    .update({
-                        front_image_url: frontImageUrl,
-                        back_image_url: backImageUrl,
-                        status: "reviewing",
-                        reviewed_at: null,
-                    })
-                    .eq("user_id", user?.id);
-
-                updateError = error;
-            } else {
-                const { error } = await supabase.from("kyc_requests").insert({
-                    user_id: user?.id,
-                    front_image_url: frontImageUrl,
-                    back_image_url: backImageUrl,
-                    status: "reviewing",
-                });
-
-                updateError = error;
+            const user = await getUser();
+            if (!user) {
+                console.error("Not authenticated.");
+                return null;
             }
 
-            if (updateError) {
-                toast.error("Failed to submit KYC.");
-                console.log(updateError);
-            } else {
+            const existing = await databases.listDocuments(
+                DB_ID,
+                PROFILE_COLLECTION_ID,
+                [Query.equal("userId", user.$id)]
+            );
+
+            const documentId = existing.documents[0].$id;
+
+            try {
+                if (existing) {
+                    await databases.updateDocument(
+                        DB_ID,
+                        PROFILE_COLLECTION_ID,
+                        documentId,
+                        {
+                            kycStatus: 'reviewing',
+                            kycFront: frontImageUrl,
+                            kycBack: backImageUrl,
+                        }
+                    );
+
+                } else {
+                    await databases.updateDocument(
+                        DB_ID,
+                        PROFILE_COLLECTION_ID,
+                        documentId,
+                        {
+                            kycStatus: 'reviewing',
+                            kycFront: frontImageUrl,
+                            kycBack: backImageUrl,
+                        }
+                    );
+                }
+
                 toast.success("KYC submitted successfully.");
                 setKycStatus("reviewing");
                 setFrontFile(null);
                 setBackFile(null);
                 setFrontUrl(null);
                 setBackUrl(null);
+            } catch {
+                toast.error("Failed to submit KYC.");
             }
+
         }
 
         setUploading(false);
@@ -197,6 +213,8 @@ export default function KYCUpload() {
                         sizes="100%"
                         src={previewUrl}
                         alt={`${label} Preview`}
+                        width={400}
+                        height={400}
                         className="rounded-lg border w-full dark:border-gray-700"
                     />
                 )}
@@ -218,13 +236,13 @@ export default function KYCUpload() {
             ) : null}
 
             {kycStatus === "approved" ? (
-                <div className="p-4 text-sm rounded-md bg-yellow-100 text-yellow-800 dark:bg-yellow-800/10 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-600">
+                <div className="p-4 text-sm rounded-md bg-green-100 text-green-800 dark:bg-green-800/10 dark:text-green-400 border border-green-300 dark:border-green-600">
                     Your KYC was <strong>{kycStatus}</strong>. You cannot resubmit at this time.
                 </div>
             ) : null}
 
             {kycStatus === "rejected" ? (
-                <div className="p-4 text-sm rounded-md bg-yellow-100 text-yellow-800 dark:bg-yellow-800/10 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-600">
+                <div className="p-4 text-sm rounded-md bg-red-100 text-red-800 dark:bg-red-800/10 dark:text-red-400 border border-red-300 dark:border-red-600">
                     Your KYC was <strong>{kycStatus}</strong>. Please resubmit your KYC documents.
                 </div>
             ) : null}

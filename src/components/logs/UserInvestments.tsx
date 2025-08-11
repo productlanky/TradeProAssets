@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import React, { useEffect, useState } from "react"; 
 import {
   Table,
   TableBody,
@@ -11,6 +10,10 @@ import {
 } from "@/components/ui/table";
 import Badge from "@/components/ui/badge/Badge";
 import { Skeleton } from "../ui/skeleton";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, INVESTMENT_COLLECTION } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
+import { plan } from "@/lib/data/info";
 
 type Investment = {
   id: string;
@@ -31,48 +34,51 @@ export default function UserInvestments() {
 
   useEffect(() => {
     const fetchInvestments = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      try {
+        const user = await getUser();
 
-      if (userError || !user) {
-        console.error("User fetch error:", userError?.message);
-        setLoading(false);
-        return;
-      }
+        // Fetch investments by userId
+        const { documents } = await databases.listDocuments(DB_ID, INVESTMENT_COLLECTION, [
+          Query.equal("userId", user.$id),
+          Query.orderDesc("startDate"),
+        ]);
 
-      const { data, error } = await supabase
-        .from("user_investments")
-        .select(`
-          id,
-          amount,
-          status,
-          start_date,
-          end_date,
-          investment_plans (
-            name,
-            interest_rate,
-            duration_days
-          )
-        `)
-        .eq("user_id", user.id)
-        .order("start_date", { ascending: false });
-
-      if (error) {
-        console.error("Investments fetch error:", error.message);
-      } else if (data) {
+        // If you need to fetch each related plan separately
         setInvestments(
-          data.map((inv) => ({
-            ...inv,
-            investment_plans: Array.isArray(inv.investment_plans)
-              ? inv.investment_plans[0]
-              : inv.investment_plans,
-          }))
-        );
-      }
+          documents.map((inv: any) => {
 
-      setLoading(false);
+            const today = new Date();
+            const endDate = inv.end_date ? new Date(inv.end_date) : null;
+
+            // If end date is set and it's today or earlier, mark as completed
+            let computedStatus = inv.status;
+            if (endDate && endDate <= today) {
+              computedStatus = "completed";
+            } else if (!endDate || endDate > today) {
+              computedStatus = "active";
+            }
+
+            // Find the plan that matches the investment's plan_id or similar key
+            const matchedPlan = plan.find((p) => p.id === inv.planId) || plan[0];
+            return {
+              id: inv.$id || inv.id,
+              amount: Number(inv.amount),
+              status: computedStatus,
+              start_date: inv.startDate,
+              end_date: inv.endDate ?? null,
+              investment_plans: matchedPlan,
+            };
+          }))
+
+      } catch (err) {
+        if (err instanceof Error) {
+          console.error("Error fetching user or investments:", err.message);
+        } else {
+          console.error("Error fetching user or investments:", err);
+        }
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchInvestments();

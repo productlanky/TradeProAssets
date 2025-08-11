@@ -6,7 +6,7 @@
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;
-
+--primary:#e51837;
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
   --breakpoint-xsm: 425px;
@@ -39,7 +39,7 @@
   --color-white: #ffffff;
   --color-black: #101828;
 
-  --color-brand-25: #f2f7ff;
+  /* --color-brand-25: #f2f7ff;
   --color-brand-50: #ecf3ff;
   --color-brand-100: #dde9ff;
   --color-brand-200: #c2d6ff;
@@ -50,8 +50,23 @@
   --color-brand-700: #2a31d8;
   --color-brand-800: #252dae;
   --color-brand-900: #262e89;
-  --color-brand-950: #161950;
+  --color-brand-950: #161950; */
 
+--color-brand-25:  #fdf2f4;
+--color-brand-50:  #fde5ea;
+--color-brand-100: #fabdc8;
+--color-brand-200: #f794a5;
+--color-brand-300: #f2667e;
+--color-brand-400: #ec3958;
+--color-brand-500: #e51837; /* base */
+--color-brand-600: #ce1632;
+--color-brand-700: #aa122a;
+--color-brand-800: #870e22;
+--color-brand-900: #600918;
+--color-brand-950: #3d050f;
+
+
+/* 
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;
   --color-blue-light-100: #e0f2fe;
@@ -77,7 +92,37 @@
   --color-gray-800: #1d2939;
   --color-gray-900: #101828;
   --color-gray-950: #0c111d;
-  --color-gray-dark: #1a2231;
+  --color-gray-dark: #1a2231; */
+
+  /* Softer, brand-tinted light blues */
+--color-blue-light-25: #f3fafc;
+--color-blue-light-50: #e8f5fa;
+--color-blue-light-100: #c9e8f3;
+--color-blue-light-200: #a3d8ec;
+--color-blue-light-300: #73c4e3;
+--color-blue-light-400: #43add6;
+--color-blue-light-500: #1f95c9;
+--color-blue-light-600: #007fb6;
+--color-blue-light-700: #006b99;
+--color-blue-light-800: #00597d;
+--color-blue-light-900: #004863;
+--color-blue-light-950: #002c3e;
+
+/* Cooler neutrals with a blue undertone */
+--color-gray-25: #f6f8fa;
+--color-gray-50: #f1f4f6;
+--color-gray-100: #e2e7eb;
+--color-gray-200: #cfd7dd;
+--color-gray-300: #b5c0c8;
+--color-gray-400: #8b97a3;
+--color-gray-500: #647080;
+--color-gray-600: #4a5565;
+--color-gray-700: #374150;
+--color-gray-800: #232b37;
+--color-gray-900: #141a23;
+--color-gray-950: #0d1118;
+--color-gray-dark: #1a2330;
+
 
   --color-orange-25: #fffaf5;
   --color-orange-50: #fff6ed;

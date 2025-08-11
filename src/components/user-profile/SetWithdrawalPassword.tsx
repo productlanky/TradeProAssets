@@ -6,8 +6,10 @@ import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
+import { toast } from "sonner"; 
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
 // import bcrypt from "bcryptjs"; // Use bcryptjs on client-side (or hash on server if needed)
 
 interface SetWithdrawalPasswordProps {
@@ -37,30 +39,40 @@ export default function SetWithdrawalPassword({
 
         setLoading(true);
 
+
         try {
-            // const hashed = bcrypt.hashSync(password, 10); // hash password client-side
+            const user = await getUser();
 
-            const { data: { user } } = await supabase.auth.getUser();
-            const { error } = await supabase
-                .from("profiles")
-                .update({ withdrawal_password: password })
-                .eq("id", user?.id);
+            // Fetch the profile document by userId
+            const res = await databases.listDocuments(DB_ID, PROFILE_COLLECTION_ID, [
+                Query.equal("userId", user.$id),
+            ]);
 
-            if (error) {
-                console.error(error);
-                toast.error("Failed to save withdrawal password.");
-            } else {
-                toast.success(
-                    hasPassword ? "Password updated successfully." : "Password set successfully."
-                );
-                closeModal();
-                refresh?.();
-                setPassword("");
-                setConfirmPassword("");
+            if (res.documents.length === 0) {
+                toast.error("Profile not found.");
+                return;
             }
-        } catch (err) {
-            console.error(err);
-            toast.error("Something went wrong.");
+
+            const documentId = res.documents[0].$id;
+
+            // Update the document
+            await databases.updateDocument(
+                DB_ID,
+                PROFILE_COLLECTION_ID,
+                documentId,
+                { withdrawalPassword: password }
+            );
+
+            toast.success(
+                hasPassword ? "Password updated successfully." : "Password set successfully."
+            );
+            closeModal();
+            refresh?.();
+            setPassword("");
+            setConfirmPassword("");
+        } catch (error) {
+            console.error(error);
+            toast.error("Something went wrong.");;
         }
 
         setLoading(false);

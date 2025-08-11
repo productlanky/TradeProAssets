@@ -59,7 +59,7 @@ export default function TiersOverview({
                 "relative rounded-2xl border p-5 text-center shadow-sm overflow-hidden group transition duration-200",
                 isActive
                   ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                  : "border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+                  : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-700"
               )}
             >
               {/* Overlay Lock */}

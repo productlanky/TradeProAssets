@@ -3,14 +3,13 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUpSchema, SignUpSchema } from "@/lib/validations/auth";
 
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { ChevronDownIcon, ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
-import React, { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2Icon } from "lucide-react"
 import { toast } from "sonner"
@@ -19,9 +18,9 @@ import DatePicker from "../form/date-picker";
 import { Country, State, City } from "country-state-city";
 import PhoneInput from "../form/group-input/PhoneInput";
 import { nanoid } from 'nanoid';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth'
-import { auth } from "@/lib/firebase/client";
-import { signUp } from "@/lib/appwrite/auth";
+import { getUser, signUp } from "@/lib/appwrite/auth";
+import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { ID, Permission, Role } from "appwrite";
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -43,6 +42,29 @@ export default function SignUpForm() {
     },
     resolver: zodResolver(signUpSchema),
   });
+
+  const [section, setSection] = useState<null | Awaited<ReturnType<typeof getUser>>>(null)
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const fetchSection = async () => {
+      try {
+        const user = await getUser();
+
+        setSection(user)
+      } catch (err) {
+        console.log("Failed to fetch section", err);
+      }
+    };
+
+    fetchSection();
+  }, []);
+
+  useEffect(() => {
+    if (section && pathname !== "/dashboard") {
+      router.replace('/dashboard')
+    }
+  }, [section, pathname, router]);
 
 
 
@@ -107,6 +129,7 @@ export default function SignUpForm() {
 
 
   const onSubmit = async (data: SignUpSchema) => {
+
     setLoading(true);
 
     const {
@@ -142,66 +165,67 @@ export default function SignUpForm() {
 
     try {
       // Create user with email and password
-      await signUp(email, password, name);
+      const user = await signUp(email, password, name);
 
+      await databases.createDocument(DB_ID, PROFILE_COLLECTION_ID, ID.unique(), {
+        userId: user.$id,
+        email,
+        firstName: fname,
+        lastName: lname,
+        gender,
+        dob: date_of_birth,
+        country: fullCountryName,
+        state: fullStateName,
+        city,
+        zip,
+        address,
+        phone: fullPhoneNumber,
+        referredBy: referred_by,
+        tierLevel: 1,
+        balance: 10,
+        refereeId: referral_code,
+        withdrawalPassword: "",
+        kycStatus: "pending",
+      }, [
+        Permission.read(Role.any()),
+        Permission.write(Role.any())
+      ]);
 
-      // const { data: signUpData, error } = await supabase.auth.signUp({
-      //   email,
-      //   password,
-      //   options: {
-      //     data: {
-      //       first_name: fname,
-      //       last_name: lname,
-      //       gender,
-      //       date_of_birth,
-      //       phone: fullPhoneNumber,
-      //       country: fullCountryName,
-      //       state: fullStateName,
-      //       city,
-      //       address,
-      //       zip,
-      //       referred_by,
-      //       referral_code,
-      //     },
-      //     emailRedirectTo: `${window.location.origin}/callback`,
-      //   },
-      // });
+      // Create Notification
+      await databases.createDocument(DB_ID, NOTIFICATION_COLLECTION, ID.unique(), {
+        userId: user.$id,
+        title: "Welcome!",
+        message: "Your account has successfully been created.",
+        type: "info",
+        read: false,
+      }, [
+        Permission.read(Role.any()),
+        Permission.write(Role.any())
+      ]);
 
-      // if (error) {
-      //   setLoading(false);
-      //   console.log(error);
-      //   toast(error.message === "User already registered" ? "Email already in use. Please sign in instead." : error.message);
-      //   return;
-      // }
+      // Create a welcome bonus transaction
+      await databases.createDocument(DB_ID, TRANSACTION_COLLECTION, ID.unique(), {
+        userId: user.$id,
+        amount: 10,
+        status: "approved",
+        type: "Welcome Bonus",
+      }, [
+        Permission.read(Role.any()),
+        Permission.write(Role.any())
+      ]);
 
-      // const user = signUpData?.user;
-
-      // if (user) {
-      //   await supabase.from("profiles").upsert({
-      //     id: user.id,
-      //     email,
-      //     first_name: fname,
-      //     last_name: lname,
-      //     gender,
-      //     dob: date_of_birth,
-      //     phone: fullPhoneNumber,
-      //     country: fullCountryName,
-      //     state: fullStateName,
-      //     city,
-      //     zip,
-      //     address,
-      //     referred_by,
-      //     referral_code,
-      //     created_at: new Date().toISOString()
-      //   });
-      // }
-
-      toast("Check your email to confirm your account.");
+      toast("Login your account.");
+      setLoading(false);
       setTimeout(() => router.push("/signin"), 3000);
-    } catch (error) {
-      console.error("Error signing up:", error);
-      toast("An error occurred while signing up. Please try again.");
-    } finally {
+
+      return user;
+    } catch (error: any) {
+      if (error?.message?.includes("already exists")) {
+        toast.error("Email already registered. Try signing in.");
+      } else {
+        toast.error("An error occurred during sign-up. Please try again.");
+      }
+      console.error("Sign-up error:", error);
       setLoading(false);
     }
   };
@@ -527,6 +551,7 @@ export default function SignUpForm() {
                 <div>
                   <button
                     type="submit"
+                    disabled={loading}
                     className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600"
                   >
                     {

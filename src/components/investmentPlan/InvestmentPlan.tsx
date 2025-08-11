@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
 import { ArrowRight } from "lucide-react";
 import Button from "../ui/button/Button";
 import { toast } from "sonner";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, INVESTMENT_COLLECTION, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { ID, Query } from "appwrite";
+import { plan } from "@/lib/data/info";
 
 type InvestmentPlan = {
   id: string;
@@ -19,40 +22,69 @@ export default function InvestmentPlansPage() {
   const [plans, setPlans] = useState<InvestmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [investing, setInvesting] = useState<string | null>(null);
+  const [investment, setInvestment] = useState<string | null>(null);
 
   useEffect(() => {
+
     const fetchData = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getUser();
       if (!user) return;
 
-      setUserId(user.id);
+      const res = await databases.listDocuments(DB_ID, PROFILE_COLLECTION_ID, [
+        Query.equal("userId", user.$id),
+      ]);
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("balance")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) {
-        toast.error("Failed to fetch balance");
+      if (res.documents.length === 0) {
+        toast.error("Profile not found.");
         return;
       }
 
-      setBalance(profile?.balance || 0);
+      setProfileId(res.documents[0].$id);
 
-      const { data, error } = await supabase
-        .from("investment_plans")
-        .select("*")
-        .order("min_amount", { ascending: true });
+      try {
+        const response = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("userId", user.$id)]
+        );
 
-      if (error) {
-        toast.error("Error fetching investment plans");
-      } else {
-        setPlans(data || []);
+        const profile = response.documents[0];
+        if (!profile) {
+          toast.error("Failed to fetch balance");
+          return;
+        }
+        setBalance(profile?.balance || 0);
+        setUserId(user.$id);
+        setPlans(plan);
+
+        // 🔥 Fetch user's last investment, sorted by start_date descending
+        const investmentRes = await databases.listDocuments(DB_ID, INVESTMENT_COLLECTION, [
+          Query.equal("userId", user.$id),
+          Query.orderDesc("startDate"),
+          Query.limit(1),
+        ]);
+
+        if (investmentRes.documents.length > 0) {
+          const lastInvestment = investmentRes.documents[0];
+          const now = new Date();
+          const endDate = new Date(lastInvestment.endDate);
+
+          if (now > endDate) {
+            // ✅ Investment has expired
+            console.log("Investment has expired.");
+            setInvestment("expired"); // or setHasExpired(true)
+          } else {
+            // ✅ Investment is still active
+            console.log("Investment is still active.");
+            setInvestment(lastInvestment.planId); // or setHasExpired(false)
+          }
+        }
+
+      } catch (error) {
+        console.error("Error fetching profile:", error);
       }
 
       setLoading(false);
@@ -61,52 +93,46 @@ export default function InvestmentPlansPage() {
     fetchData();
   }, []);
 
-const handleInvest = async (plan: InvestmentPlan) => {
-  if (!userId) return;
+  const handleInvest = async (plan: InvestmentPlan) => {
+    if (!userId || !profileId) return;
 
-  if (balance < plan.min_amount) {
-    toast.error("Insufficient balance for this investment plan.");
-    return;
-  }
+    if (balance < plan.min_amount) {
+      toast.error("Insufficient balance for this investment plan.");
+      return;
+    }
 
-  setInvesting(plan.id);
+    setInvesting(plan.id);
 
-  const startedAt = new Date();
-  const endAt = new Date();
-  endAt.setDate(startedAt.getDate() + plan.duration_days);
+    const startedAt = new Date();
+    const endAt = new Date();
+    endAt.setDate(startedAt.getDate() + plan.duration_days);
 
-  const { error: insertError } = await supabase.from("user_investments").insert({
-    user_id: userId,
-    plan_id: plan.id,
-    amount: plan.min_amount,
-    status: "active",
-    start_date: startedAt.toISOString(),
-    end_date: endAt.toISOString(), // ← this might be null or misnamed
-  });
+    try {
+      // 1. Create investment document
+      await databases.createDocument(DB_ID, INVESTMENT_COLLECTION, ID.unique(), {
+        userId,
+        planId: plan.id,
+        amount: plan.min_amount,
+        status: "active",
+        startDate: startedAt.toISOString(),
+        endDate: endAt.toISOString(),
+      });
 
-  if (insertError) {
-    console.log("Insert error:", insertError);
-    toast.error("Failed to start investment. Check console for details.");
-    setInvesting(null);
-    return;
-  }
+      // 2. Update balance in profile
+      await databases.updateDocument(DB_ID, PROFILE_COLLECTION_ID, profileId, {
+        balance: balance - plan.min_amount,
+      });
 
-  // Deduct balance
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ balance: balance - plan.min_amount })
-    .eq("id", userId);
-
-  if (updateError) {
-    console.log("Balance update error:", updateError);
-    toast.warning("Investment saved but failed to update balance.");
-  }
-
-  toast.success(`Investment in "${plan.name}" started successfully.`);
-  setBalance((prev) => prev - plan.min_amount);
-  setInvesting(null);
-};
-
+      // 3. Show success
+      toast.success(`Investment in "${plan.name}" started successfully.`);
+      setBalance((prev) => prev - plan.min_amount);
+    } catch (error) {
+      console.error("Investment error:", error);
+      toast.error("Failed to start investment. See console for details.");
+    } finally {
+      setInvesting(null);
+    }
+  };
 
 
   if (loading) {
@@ -165,7 +191,7 @@ const handleInvest = async (plan: InvestmentPlan) => {
             variant="outline"
             className="mt-5"
             onClick={() => handleInvest(plan)}
-            disabled={investing === plan.id}
+            disabled={investing === plan.id || investment === plan.id}
           >
             {investing === plan.id ? "Processing..." : "Start Investment"}
             <ArrowRight size={16} />

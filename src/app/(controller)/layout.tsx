@@ -26,7 +26,6 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true)
     const fetchSession = async () => {
       const data = await getUser();
       setSessionInfo(data);
@@ -34,7 +33,6 @@ export default function AdminLayout({
     };
     fetchSession();
   }, []);
-
 
   // Redirect if no session, but only after initial check
   useEffect(() => {

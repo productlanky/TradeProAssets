@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ["wnlsjiritxxkhtqfsptw.supabase.co"], // ✅ Add your Supabase domain here
+    domains: ["fra.cloud.appwrite.io"], // ✅ Add your Supabase domain here
   },
   webpack(config) {
     config.module.rules.push({

@@ -3,16 +3,12 @@ import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import NotificationDropdown from "@/components/header/NotificationDropdown";
 import UserDropdown from "@/components/header/UserDropdown";
 import { useSidebar } from "@/context/SidebarContext";
-import { Session } from "@supabase/supabase-js";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 
-interface AppHeaderProps {
-  session?: Session;
-}
 
-const AppHeader: React.FC<AppHeaderProps> = ({ session }) => {
+const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
@@ -173,7 +169,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ session }) => {
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}
-          <UserDropdown user={session}/>
+          <UserDropdown/>
 
         </div>
       </div>

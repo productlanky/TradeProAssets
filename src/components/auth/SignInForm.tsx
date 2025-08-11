@@ -9,16 +9,40 @@ import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2Icon } from "lucide-react"
 import { toast } from "sonner"
-import { supabase } from "@/lib/supabase/client";
+import { getUser, logIn } from "@/lib/appwrite/auth";
 
 export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false)
+
+  const [section, setSection] = useState<null | Awaited<ReturnType<typeof getUser>>>(null)
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const fetchSection = async () => {
+      try {
+        const user = await getUser();
+
+        setSection(user)
+      } catch (err) {
+        console.log("Failed to fetch section", err);
+      }
+    };
+
+    fetchSection();
+  }, []);
+
+  useEffect(() => {
+    if (section && pathname !== "/dashboard") {
+      router.replace('/dashboard')
+    }
+  }, [section, pathname, router]);
+
 
   const {
     register,
@@ -37,44 +61,35 @@ export default function SignInForm() {
     const { email, password } = data;
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
+    try {
+
+      // ✅ Try to log in
+      const response = await logIn(email, password);
+
+      if (!response) {
+        toast.error("Login failed");
+        return;
+      }
+
+      const user = await getUser();
+
+      // ✅ Redirect based on admin status
+      if (user.labels?.includes("admin")) {
+        router.push("/controlPanel"); // change this path to your admin dashboard
+      } else {
+        router.push("/dashboard"); // regular user dashboard
+      }
+
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Login failed");
+
+    } finally {
+      // ✅ Always stop loading
       setLoading(false);
-      toast(error.message);
-      return;
     }
 
-    // ✅ Get user ID
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
-
-    if (!userId) {
-      setLoading(false);
-      toast("Unable to fetch user data");
-      return;
-    }
-
-    // ✅ Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", userId)
-      .single();
-
-    setLoading(false);
-
-    if (profileError || !profile) {
-      toast("Profile not found.");
-      return;
-    }
-
-    // ✅ Redirect based on admin status
-    if (profile.is_admin) {
-      router.push("/controlPanel"); // change this path to your admin dashboard
-    } else {
-      router.push("/dashboard"); // regular user dashboard
-    }
   };
 
 
@@ -105,7 +120,7 @@ export default function SignInForm() {
                 <div>
                   <Label>Email <span className="text-error-500">*</span></Label>
                   <Input
-                    placeholder="info@gmail.com"
+                    placeholder="example@domain.com"
                     type="email"
                     {...register("email")}
                   />

@@ -7,8 +7,10 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { ProfileType } from "./ProfilePage";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
+import { toast } from "sonner"; 
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
+import { getUser } from "@/lib/appwrite/auth";
 
 export default function UserAddressCard({ country, city, state, zip, address, id, refresh }: ProfileType) {
   const { isOpen, openModal, closeModal } = useModal();
@@ -29,21 +31,38 @@ export default function UserAddressCard({ country, city, state, zip, address, id
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { error } = await supabase
-      .from("profiles")
-      .update(form)
-      .eq("id", id);
+    try {
+      const user = await getUser();
 
-    if (error) {
-      console.error(error);
+      // Fetch the profile document by userId
+      const res = await databases.listDocuments(DB_ID, PROFILE_COLLECTION_ID, [
+        Query.equal("userId", user.$id),
+      ]);
+
+      if (res.documents.length === 0) {
+        toast.error("Profile not found.");
+        return;
+      }
+
+      const documentId = res.documents[0].$id;
+
+      // Update the document
+      await databases.updateDocument(
+        DB_ID,
+        PROFILE_COLLECTION_ID,
+        documentId,
+        form
+      );
+
+      toast.success("Address updated successfully.");
+      closeModal();
+      refresh?.();
+    } catch (error) {
+      console.error("Update failed:", error);
       toast.error("Failed to update address.");
-      return;
     }
-
-    toast.success("Address updated successfully.");
-    closeModal();
-    refresh?.(); // optional chaining in case refresh isn't passed
   };
+
 
   return (
     <>

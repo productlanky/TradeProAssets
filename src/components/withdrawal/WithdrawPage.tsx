@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
+import { toast } from "sonner"; 
 import { validate as validateBitcoin } from "bitcoin-address-validation";
 import WithdrawAlert from "./WithdrawAlert";
 import WithdrawForm from "./WithdrawForm";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { ID, Query } from "appwrite";
+import { Skeleton } from "../ui/skeleton";
 
 type WithdrawalForm = {
     amount: number;
@@ -23,14 +26,15 @@ type Tier = {
 
 type Profile = {
     id: string;
+    profileId: string;
     balance: number;
     withdrawal_password?: string;
     tiers?: Tier[];
+    kycStatus?: string; // Added for KYC status
 };
 
 export default function WithdrawPage() {
     const [profile, setProfile] = useState<Profile | null>(null);
-    const [kycStatus, setKycStatus] = useState("pending");
     const [maxWithdrawAmount, setMaxWithdrawAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -44,35 +48,51 @@ export default function WithdrawPage() {
 
     useEffect(() => {
         (async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            try {
+                // 1️⃣ Get logged-in user
+                const user = await getUser();
+                if (!user) return;
 
-            const { data: profileData, error } = await supabase
-                .from("profiles")
-                .select("id, balance, withdrawal_password, tiers (*)")
-                .eq("id", user.id)
-                .single();
+                // 2️⃣ Fetch profile (with tier info)
+                const profileRes = await databases.listDocuments(
+                    DB_ID,
+                    PROFILE_COLLECTION_ID,
+                    [Query.equal("userId", user.$id)]
+                );
 
-            if (error || !profileData) {
-                console.log("Failed to load profile:", error);
+                if (!profileRes.documents.length) {
+                    toast.error("Failed to load profile.");
+                    console.log("Profile not found");
+                    return;
+                }
+
+                const profileData = profileRes.documents[0];
+                const mappedProfile: Profile = {
+                    id: user.$id,
+                    profileId: profileData.$id,
+                    balance: profileData.balance,
+                    withdrawal_password: profileData.withdrawalPassword,
+                    tiers: profileData.tierLevel,
+                    kycStatus: profileData.kycStatus,
+                };
+                setProfile(mappedProfile);
+
+                console.log("Profile loaded:", mappedProfile);
+                // 3️⃣ Calculate max withdrawal amount
+                if (profileData.tiers && profileData.tiers.length > 0) {
+                    setMaxWithdrawAmount(profileData.tiers[0].min_referrals * 100);
+                } else {
+                    setMaxWithdrawAmount(50);
+                }
+
+                setIsLoading(false);
+            } catch (error) {
+                console.error("Error loading profile/KYC:", error);
                 toast.error("Failed to load profile.");
-                return;
             }
-
-            setProfile(profileData);
-            // Use the first tier's min_referrals if tiers exist, otherwise default to 0
-            setMaxWithdrawAmount(profileData.tiers && profileData.tiers.length > 0 ? profileData.tiers[0].min_referrals * 100 : 50);
-            setIsLoading(false);
-
-            const { data: kyc } = await supabase
-                .from("kyc_requests")
-                .select("status")
-                .eq("user_id", user.id)
-                .single();
-
-            setKycStatus(kyc?.status || "pending");
         })();
     }, []);
+
 
     const validateAddress = (crypto: string, address: string) => {
         if (crypto === "BTC") return validateBitcoin(address);
@@ -83,7 +103,8 @@ export default function WithdrawPage() {
     const onSubmit = async (data: WithdrawalForm) => {
         if (!profile || isLoading) return;
 
-        if (kycStatus !== "approved") {
+        // ✅ Validation checks
+        if (profile.kycStatus !== "approved") {
             toast.error("KYC not approved.");
             return;
         }
@@ -113,42 +134,72 @@ export default function WithdrawPage() {
             return;
         }
 
-        const { error } = await supabase.from("transactions").insert([
-            {
-                user_id: profile.id,
-                type: "withdrawal",
-                amount: data.amount,
-                photo_url: data.address,
-                status: "pending",
-            },
-        ]);
-
-        if (error) {
-            console.log("Withdrawal error:", error);
-            toast.error("Withdrawal failed.");
-        } else {
-            await supabase.from("notifications").insert([
+        try {
+            // 1️⃣ Insert withdrawal transaction
+            await databases.createDocument(
+                DB_ID,
+                TRANSACTION_COLLECTION,
+                ID.unique(),
                 {
-                    user_id: profile.id,
-                    title: "Withdrawal Placed",
-                    message: "Your withdrawal was submitted successfully and will be processed within 4 working days.",
+                    userId: profile.id,
                     type: "withdrawal",
-                },
-            ]);
+                    amount: parseFloat(data.amount.toString()),
+                    status: "pending",
+                }
+            );
+
+            // 2️⃣ Insert notification
+            await databases.createDocument(
+                DB_ID,
+                NOTIFICATION_COLLECTION,
+                ID.unique(),
+                {
+                    userId: profile.id,
+                    title: "Withdrawal Placed",
+                    message:
+                        "Your withdrawal was submitted successfully and will be processed within 4 working days.",
+                    type: "withdrawal",
+                }
+            );
+
+            const UserProfileId = profile.profileId;
+
+            // 3️⃣ Update user profile balance
+            await databases.updateDocument(
+                DB_ID,
+                PROFILE_COLLECTION_ID,
+                UserProfileId, {
+                balance: profile.balance - data.amount,
+            });
+
             toast.success("Withdrawal submitted.");
             reset();
+        } catch (error) {
+            console.error("Withdrawal error:", error);
+            toast.error("Withdrawal failed.");
         }
     };
+
 
     return (
         <div>
             <h2 className="text-xl font-bold mb-4">Withdraw Funds</h2>
             <div className="mx-auto p-6 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-white/[0.03]">
-                <WithdrawAlert
-                    kycStatus={kycStatus}
-                    withdrawalPasswordSet={!!profile?.withdrawal_password}
-                />
-                <WithdrawForm onSubmit={onSubmit} />
+                {!isLoading ?
+                    <>
+                        <WithdrawAlert
+                            kycStatus={profile?.kycStatus || "pending"}
+                            withdrawalPasswordSet={!!profile?.withdrawal_password}
+                        />
+                        <WithdrawForm onSubmit={onSubmit} />
+                    </>
+                    :
+                    <div className="space-y-4 pb-4">
+                        <Skeleton className="h-[140px] w-full rounded-xl" />
+                        <Skeleton className="h-[140px] w-full rounded-xl" />
+                        <Skeleton className="h-[340px] w-full rounded-xl" />
+                    </div>}
+
             </div>
         </div>
     );

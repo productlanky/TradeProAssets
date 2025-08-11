@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
-import { supabase } from "@/lib/supabase/client";
+import React, { useEffect, useState, use } from "react"; 
 import AdminUserProfileEditor from "@/components/admin/AdminProfileEditor";
 import Link from "next/link";
-import { ChevronLeftIcon } from "@/icons";
+import { ChevronLeftIcon } from "@/icons"; 
+import { useRouter } from "next/navigation";
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
+import Loading from "@/components/ui/Loading";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,27 +38,55 @@ export default function Page({ params }: Props) {
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const router = useRouter()
+
   useEffect(() => {
     const fetchUser = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id)
-        .single();
+      try {
 
-      if (error) {
-        console.error("Error fetching user:", error.message);
-      } else {
-        setUser(data as Profile);
+        // Fetch the profile document using their $id
+        const res = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("$id", id)]
+        );
+
+        if (!res.documents.length) {
+          console.error("User profile not found");
+          return;
+        }
+
+        const doc = res.documents[0];
+        const profile: Profile = {
+          id: doc.$id,
+          first_name: doc.firstName,
+          last_name: doc.lastName,
+          email: doc.email,
+          gender: doc.gender,
+          phone: doc.phone,
+          country: doc.country,
+          state: doc.state,
+          city: doc.city,
+          zip: doc.zip,
+          address: doc.address,
+          balance: doc.balance,
+          dob: doc.dob,
+          created_at: doc.$createdAt,
+          kyc_status: doc.kycStatus,
+        };
+        setUser(profile); // store the profile in state
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchUser();
   }, [id]);
 
-  if (loading) return <div className="p-6 text-center">Loading...</div>;
+
+  if (loading) return <Loading/>;
   if (!user) return <div className="p-6 text-center text-red-500">User not found.</div>;
 
   return (
@@ -70,7 +101,7 @@ export default function Page({ params }: Props) {
         </Link>
       </div>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
-        <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
+        <h3 className="mb-5 text-lg font-semibold capitalize text-gray-800 dark:text-white/90 lg:mb-7">
           {user.first_name} {user.last_name} Profile
         </h3>
         <AdminUserProfileEditor id={id} />

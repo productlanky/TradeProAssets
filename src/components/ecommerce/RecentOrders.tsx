@@ -7,10 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import Badge from "../ui/badge/Badge";
-import { supabase } from "@/lib/supabase/client";
+import Badge from "../ui/badge/Badge"; 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
 
 type Transaction = {
   id: string;
@@ -26,27 +28,28 @@ export default function RecentTransactions() {
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const user = await getUser();
+      if (!user) return;
 
-      if (userError || !user) {
-        console.error("Failed to get user:", userError?.message);
-        return;
-      }
+      try {
+        const response = await databases.listDocuments(
+          DB_ID,
+          TRANSACTION_COLLECTION,
+          [Query.equal("userId", user.$id)]
+        );
 
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("id, type, amount, status, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        const transactions: Transaction[] = response.documents.map((doc: any) => ({
+          id: doc.$id || doc.id,
+          type: doc.type,
+          amount: Number(doc.amount),
+          status: doc.status,
+          created_at: doc.$createdAt,
+        }));
 
-      if (error) {
-        console.error("Error fetching transactions:", error.message);
-      } else {
-        setTransactions(data || []);
+        setTransactions(transactions || []);
+
+      } catch (error) {
+        console.error("Error fetching profile:", error);
       }
 
       setLoading(false);
@@ -83,23 +86,23 @@ export default function RecentTransactions() {
           <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="py-3">
-                      <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <div className="h-4 w-28 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                <TableRow key={i}>
+                  <TableCell className="py-3">
+                    <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="h-4 w-28 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                  </TableCell>
+                </TableRow>
+              ))
               : transactions.length > 0
-              ? transactions.map((tx) => (
+                ? transactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell className="py-3 text-theme-sm text-gray-800 capitalize dark:text-white/90">
                       {tx.type.replace("_", " ")}
@@ -111,28 +114,28 @@ export default function RecentTransactions() {
                       <Badge
                         size="sm"
                         color={
-                          tx.status === "approved"
+                          tx.status == "approved"
                             ? "success"
-                            : tx.status === "pending"
-                            ? "warning"
-                            : "error"
+                            : tx.status == "pending"
+                              ? "warning"
+                              : "error"
                         }
                       >
                         {tx.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3 text-theme-xs text-gray-500 dark:text-gray-400">
-                      {new Date(tx.created_at).toLocaleDateString()}
+                      {new Date(tx.created_at).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))
-              : (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-4 text-center text-gray-500 dark:text-gray-400">
-                    No recent transactions found.
-                  </TableCell>
-                </TableRow>
-              )}
+                : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-4 text-center text-gray-500 dark:text-gray-400">
+                      No recent transactions found.
+                    </TableCell>
+                  </TableRow>
+                )}
           </TableBody>
         </Table>
       </div>

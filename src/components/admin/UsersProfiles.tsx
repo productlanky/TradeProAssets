@@ -11,8 +11,9 @@ import {
 import Badge from "../ui/badge/Badge";
 import Image from "next/image";
 import Input from "../form/input/InputField";
-import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
 
 interface UserRow {
     id: string;
@@ -32,29 +33,38 @@ export default function UsersTable() {
 
     useEffect(() => {
         const fetchUsers = async () => {
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("id, first_name, last_name, photo_url, email, gender, country, phone, balance, is_admin, created_at")
-                .neq("is_admin", true);
+            try {
+                const res = await databases.listDocuments(
+                    DB_ID,
+                    PROFILE_COLLECTION_ID,
+                    [
+                        Query.orderDesc("$createdAt")     // optional: newest first
+                    ]
+                );
 
-            if (error || !data) {
-                console.error("Fetch error:", error?.message);
-                return;
+                const formatted = res.documents
+                    // .filter((u) => !u.labels || !u.labels.includes("admin"))
+                    .map((u) => ({
+                        id: u.$id,
+                        name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
+                        image: "/images/user/user-38.jpg",
+                        email: u.email ?? "—",
+                        gender: u.gender ?? "—",
+                        country: u.country ?? "—",
+                        phone: u.phone ?? "—",
+                        balance: parseFloat(u.balance) || 0,
+                        created_at: u.$createdAt
+                    }));
+
+
+                setUsers(formatted);
+            } catch (error) {
+                if (error instanceof Error) {
+                    console.error("Fetch error:", error.message);
+                } else {
+                    console.error("Fetch error:", error);
+                }
             }
-
-            const formatted = data.map((u) => ({
-                id: u.id,
-                name: `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim(),
-                image: u.photo_url ?? "/images/user/owner.jpg",
-                email: u.email ?? "—",
-                gender: u.gender ?? "—",
-                country: u.country ?? "—",
-                phone: u.phone ?? "—",
-                balance: parseFloat(u.balance) || 0,
-                created_at: u.created_at,
-            }));
-
-            setUsers(formatted);
         };
 
         fetchUsers();
@@ -83,7 +93,7 @@ export default function UsersTable() {
 
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                 <div className="max-w-full overflow-x-auto">
-                    <div className="min-w-[1100px]">
+                    <div className="min-w-[800px]">
                         <Table>
                             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                                 <TableRow className="text-left">
@@ -111,7 +121,7 @@ export default function UsersTable() {
                                 </TableRow>
                             </TableHeader>
 
-                            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] capitalize">
                                 {filteredUsers.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="px-5 py-4 sm:px-6 text-start">

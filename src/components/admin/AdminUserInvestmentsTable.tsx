@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { useEffect, useState } from "react"; 
 import { toast } from "sonner";
 import {
     Table,
@@ -11,6 +10,10 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import Badge from "@/components/ui/badge/Badge";
+import { databases, DB_ID, INVESTMENT_COLLECTION } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
+import { plan } from "@/lib/data/info";
+import Loading from "../ui/Loading";
 
 interface Props {
     userId: string;
@@ -34,37 +37,65 @@ export default function AdminUserInvestmentsTable({ userId }: Props) {
     useEffect(() => {
         const fetchInvestments = async () => {
             setLoading(true);
-            const { data, error } = await supabase
-                .from("user_investments")
-                .select("*, investment_plans(name)")
-                .eq("user_id", userId)
-                .order("start_date", { ascending: false });
 
-            if (error) {
-                console.error(error);
+            try {
+                // 1️⃣ Get user's investments
+                const res = await databases.listDocuments(
+                    DB_ID,
+                    INVESTMENT_COLLECTION,
+                    [
+                        Query.equal("userId", userId),
+                        // Query.orderDesc("startDate")
+                    ]
+                );
+
+                const investments = res.documents ?? [];
+
+                // 2️⃣ Get all plans
+
+                const plansMap = new Map(
+                    plan.map((plan) => [plan.id, plan.name])
+                );
+
+                // 3️⃣ Format data
+                const formatted = investments.map((inv) => {
+                    const today = new Date();
+                    const endDate = inv.end_date ? new Date(inv.end_date) : null;
+
+                    // If end date is set and it's today or earlier, mark as completed
+                    let computedStatus = inv.status;
+                    if (endDate && endDate <= today) {
+                        computedStatus = "completed";
+                    } else if (!endDate || endDate > today) {
+                        computedStatus = "active";
+                    }
+
+                    return {
+                        id: inv.$id,
+                        amount: inv.amount,
+                        plan_id: inv.planId,
+                        start_date: inv.startDate,
+                        status: computedStatus,
+                        profit: inv.profit,
+                        ends_date: inv.endsDate ?? inv.endDate ?? null,
+                        plan_name: plansMap.get(inv.planId) ?? "N/A"
+                    }
+
+                });
+
+
+                setInvestments(formatted);
+            } catch (err) {
+                console.error("Error fetching investments:", err);
                 toast.error("Failed to fetch investments");
-                return;
+            } finally {
+                setLoading(false);
             }
-
-            const formatted = data.map((inv) => ({
-                id: inv.id,
-                amount: inv.amount,
-                plan_id: inv.plan_id,
-                start_date: inv.start_date,
-                status: inv.status,
-                profit: inv.profit,
-                ends_date: inv.end_date,
-                plan_name: inv.investment_plans?.name ?? "N/A",
-            }));
-
-            setInvestments(formatted);
-            setLoading(false);
         };
-
         fetchInvestments();
     }, [userId]);
 
-    if (loading) return <div className="p-6 text-center">Loading investments...</div>;
+    if (loading) return <Loading/>;
     if (investments.length === 0) return <div className="p-6 text-center text-gray-500">No investments found.</div>;
 
     return (

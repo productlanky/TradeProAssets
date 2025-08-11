@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { useEffect, useState } from "react"; 
 import { Progress } from "@/components/ui/progress";
 import TierProgressCard from "./TierProgressCard";
 import TiersOverview from "./TiersOverview";
 import { tierList } from "@/lib/data/info";
+import { databases, DB_ID, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
+import { getUser } from "@/lib/appwrite/auth";
 
 export default function BannerPage() {
   const [totalDeposits, setTotalDeposits] = useState(0);
@@ -15,41 +17,84 @@ export default function BannerPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const user = await getUser().catch(() => null);
+        if (!user) return;
 
-      const { data: deposits } = await supabase
-        .from("transactions")
-        .select("amount")
-        .eq("user_id", user.id)
-        .eq("type", "deposit")
-        .eq("status", "approved");
+        const profileRes = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("userId", user.$id)]
+        );
+        const profileDoc = profileRes.documents[0];
 
-      const totalDeposit = deposits?.reduce((sum, tx) => sum + (tx.amount || 0), 0) || 0;
-      setTotalDeposits(totalDeposit);
+        // Get approved deposits
+        const deposits = await databases.listDocuments(
+          DB_ID,
+          TRANSACTION_COLLECTION,
+          [
+            Query.equal("userId", user.$id),
+            Query.equal("type", "deposit"),
+            Query.equal("status", "approved")
+          ]
+        );
 
-      const { data: referrals } = await supabase
-        .from("referrals")
-        .select("*")
-        .eq("referred_by", user.id);
+        const totalDeposit = deposits?.documents?.reduce(
+          (sum, tx) => sum + (Number(tx.amount) || 0),
+          0
+        ) || 0;
 
-      const totalReferral = referrals?.length || 0;
-      setTotalReferrals(totalReferral);
+        // Get referrals
+        const referralsList = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("referredBy", profileDoc.refereeId)] // or profileDoc.referralCode depending on schema
+        );
 
-      const current = [...tierList].reverse().find(
-        (tier) => totalDeposit >= tier.deposit && totalReferral >= tier.referrals
-      );
-      setActiveTier(current || tierList[0]);
+        const totalReferralCount = referralsList.total;
 
-      const next = tierList.find(
-        (tier) =>
-          tier.deposit > totalDeposit || tier.referrals > totalReferral
-      );
-      setNextTier(next || null);
+        // Update state
+        setTotalDeposits(totalDeposit);
+        setTotalReferrals(totalReferralCount);
+
+        // Calculate current and next tier using local vars (avoids async state issues)
+        const currentTier = tierList
+          // Make sure we're working with a copy so we don't mutate the original
+          .slice()
+          // Sort ascending by deposit first, then referrals
+          .sort((a, b) => {
+            if (a.deposit === b.deposit) {
+              return a.referrals - b.referrals;
+            }
+            return a.deposit - b.deposit;
+          })
+          // Filter only tiers the user qualifies for
+          .filter(tier =>
+            totalDeposit >= Number(tier.deposit) &&
+            totalReferralCount >= Number(tier.referrals)
+          )
+          // Pick the last one (highest qualified)
+          .pop();
+
+        setActiveTier(currentTier || tierList[0]);
+
+        const nextTier = tierList.find(
+          tier => tier.deposit > totalDeposit || tier.referrals > totalReferralCount
+        );
+        setNextTier(nextTier || null);
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
     }
 
     fetchData();
   }, []);
+
+
+
+  console.log("Next Tier:", nextTier);
+
 
   const getProgressToNextTier = () => {
     if (!nextTier) return 100;

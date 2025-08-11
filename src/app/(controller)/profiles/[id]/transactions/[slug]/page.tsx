@@ -5,8 +5,8 @@ import { ChevronLeftIcon } from '@/icons';
 import Link from 'next/link';
 import React, { use } from 'react'
 
-export default function AdminUserTransactionsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function AdminUserTransactionsPage({ params }: { params: Promise<{ id: string, slug: string }> }) {
+    const { id, slug } = use(params);
 
     return (
         <div>
@@ -19,7 +19,7 @@ export default function AdminUserTransactionsPage({ params }: { params: Promise<
                     Back to home
                 </Link>
             </div>
-            <AdminUserTransactionsTable userId={id} />
+            <AdminUserTransactionsTable userId={slug} />
         </div>
     )
 }

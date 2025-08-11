@@ -13,11 +13,14 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
-  BoxCubeIcon, 
-  ChevronDownIcon, 
+  BoxCubeIcon,
+  ChevronDownIcon,
   PieChartIcon,
-  PlugInIcon, 
-} from "../icons/index"; 
+  PlugInIcon,
+} from "../icons/index";
+import { getUser } from "@/lib/appwrite/auth";
+import { SiStockx } from "react-icons/si";
+import { RiAdminFill, RiStockFill } from "react-icons/ri";
 
 type NavItem = {
   name: string;
@@ -39,8 +42,18 @@ const navItems: NavItem[] = [
   },
   {
     icon: <BiHistory size={18} />,
-    name: "Investment Logs",
+    name: "Investments Logs",
     path: "/logs",
+  },
+  {
+    icon: <RiStockFill size={18} />,
+    name: "Shares",
+    path: "/shares",
+  },
+  {
+    icon: <SiStockx size={18} />,
+    name: "Shares Logs",
+    path: "/sharelogs",
   },
   {
     icon: <FaExchangeAlt />,
@@ -108,6 +121,20 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const [user, setUser] = useState<string>();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await getUser();
+
+      if (user.labels?.includes("admin")) {
+        setUser("admin");
+      } else {
+        setUser("user");
+      }
+    }
+    fetchUser();
+  }), []
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -223,6 +250,29 @@ const AppSidebar: React.FC = () => {
           )}
         </li>
       ))}
+
+      {user === "admin" && (
+        <li>
+          <Link
+            href={'/controlPanel'}
+            className={`menu-item group ${isActive('/controlPanel') ? "menu-item-active" : "menu-item-inactive"
+              }`}
+          >
+            <span
+              className={`${isActive('/controlPanel')
+                ? "menu-item-icon-active"
+                : "menu-item-icon-inactive"
+                }`}
+            >
+              <RiAdminFill size={18} />
+            </span>
+            {(isExpanded || isHovered || isMobileOpen) && (
+              <span className={`menu-item-text`}>Admin Panel</span>
+            )}
+          </Link>
+        </li>
+      )
+      }
     </ul>
   );
 

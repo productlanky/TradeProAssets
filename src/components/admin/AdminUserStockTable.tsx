@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react";
 import Select from "@/components/form/Select";
 import { toast } from "sonner";
 import {
@@ -11,9 +11,11 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import Badge from "@/components/ui/badge/Badge";
-import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
 import { ID, Query } from "appwrite";
 import Loading from "../ui/Loading";
+import { RiStockFill } from "react-icons/ri";
+import { Skeleton } from "../ui/skeleton";
 
 interface Props {
     userId: string;
@@ -23,21 +25,15 @@ type Transaction = {
     id: string;
     user_id: string;
     amount: number;
-    type: "deposit" | "withdrawal";
-    status: "pending" | "approved" | "rejected";
+    shares: number;
+    price: number;
     created_at: string;
 };
 
-
-const statusOptions = [
-    { label: "Pending", value: "pending" },
-    { label: "Approved", value: "approved" },
-    { label: "Rejected", value: "rejected" },
-];
-
-export default function AdminUserTransactionsTable({ userId }: Props) {
+export default function AdminUserStockTable({ userId }: Props) {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [totalShares, setTotalShare] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchTransactions = async () => {
@@ -46,7 +42,7 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
 
                 const res = await databases.listDocuments(
                     DB_ID,
-                    TRANSACTION_COLLECTION,
+                    STOCKLOG_COLLECTION_ID,
                     [
                         Query.equal("userId", userId),
                         Query.orderDesc("$createdAt")
@@ -58,11 +54,14 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                         id: doc.$id,
                         user_id: doc.user_id ?? doc.userId,
                         amount: doc.amount,
-                        type: doc.type,
-                        status: doc.status,
+                        shares: doc.shares,
+                        price: doc.price,
                         created_at: doc.created_at ?? doc.$createdAt,
                     }))
                 );
+
+                const totalShare = res.documents.reduce((sum, tx) => sum + (tx.shares || 0), 0) || 0;
+                setTotalShare(totalShare)
             } catch (error) {
                 console.error("Failed to fetch transactions:", error);
                 toast.error("Failed to fetch transactions");
@@ -75,86 +74,8 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
     }, [userId]);
 
 
-    const handleStatusChange = async (id: string, newStatus: string) => {
-        const tx = transactions.find((t) => String(t.id) === id);
-        if (!tx) return;
 
-        const { amount, type, status: oldStatus } = tx;
-
-        try {
-            // ✅ Update transaction status
-            await databases.updateDocument(
-                DB_ID,
-                TRANSACTION_COLLECTION,
-                id,
-                { status: newStatus }
-            );
-
-            // ✅ Prepare notification message
-            const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
-            const message = `${capitalizedType} of $${amount} was ${newStatus}`;
-
-            // ✅ Send notification
-            await databases.createDocument(
-                DB_ID,
-                NOTIFICATION_COLLECTION,
-                ID.unique(),
-                {
-                    userId: userId,
-                    title: "Transaction Status Updated",
-                    message,
-                    type: "transaction",
-                    read: false,
-                }
-            );
-
-            // ✅ Get current balance
-            const profileRes = await databases.listDocuments(
-                DB_ID,
-                PROFILE_COLLECTION_ID,
-                [Query.equal("userId", userId)]
-            );
-
-            const profileDoc = profileRes.documents[0];
-            let newBalance = profileDoc?.balance ?? 0;
-
-            const wasApproved = oldStatus === "approved";
-            const willBeApproved = newStatus === "approved";
-
-            // ✅ Adjust balance only when approval status changes
-            if (!wasApproved && willBeApproved) {
-                newBalance += type === "deposit" ? amount : -amount;
-            } else if (wasApproved && !willBeApproved) {
-                newBalance += type === "deposit" ? -amount : amount;
-            }
-            // ✅ Update profile balance if changed
-            if (profileDoc) {
-                await databases.updateDocument(
-                    DB_ID,
-                    PROFILE_COLLECTION_ID,
-                    profileDoc.$id,
-                    { balance: newBalance }
-                );
-            }
-
-
-            // ✅ Update local state
-            setTransactions((prev) =>
-                prev.map((t) =>
-                    String(t.id) === id ? { ...t, status: newStatus as Transaction["status"] } : t
-                )
-            );
-
-            toast.success("Transaction status and balance updated");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to update status");
-        }
-    };
-
-
-
-    if (loading) return <Loading/>;
+    if (loading) return <Loading />;
 
     if (!transactions.length)
         return <div className="p-6 text-gray-500 text-center">No transactions found.</div>;
@@ -163,7 +84,19 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
         <div className="p-5">
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                 <div className="max-w-full overflow-x-auto">
-                    <div className="min-w-[1024px]">
+                    <div className="min-w-[1024px] space-y-4">
+                        <div className="flex items-center gap-4 rounded-2xl bg-white p-5 dark:bg-white/[0.03] md:p-6">
+                            <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800">
+                                <RiStockFill size={20} className="text-gray-800 dark:text-white/90" />
+                            </div>
+                            <div>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">Total Shares</span>
+                                <h4 className="mt-2 font-bold text-gray-800 text-2xl dark:text-white/90">
+                                    {loading ? <Skeleton className="h-6 w-24" /> : `$${totalShares?.toFixed(2)}`}
+                                </h4>
+                            </div>
+                        </div>
+
                         <Table>
                             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                                 <TableRow>
@@ -174,10 +107,10 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                                         Amount
                                     </TableCell>
                                     <TableCell isHeader className="px-5 py-3 text-start text-theme-xs text-gray-500 font-medium dark:text-gray-400">
-                                        Method
+                                        Shares
                                     </TableCell>
                                     <TableCell isHeader className="px-5 py-3 text-start text-theme-xs text-gray-500 font-medium dark:text-gray-400">
-                                        Status
+                                        Price
                                     </TableCell>
                                     <TableCell isHeader className="px-5 py-3 text-start text-theme-xs text-gray-500 font-medium dark:text-gray-400">
                                         Created At
@@ -190,8 +123,9 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                                     <TableRow key={tx.id}>
                                         <TableCell className="px-5 py-4 text-start">{tx.id}</TableCell>
                                         <TableCell className="px-5 py-4 text-start">${tx.amount.toLocaleString()}</TableCell>
-                                        <TableCell className="px-5 py-4 text-start">{tx.type}</TableCell>
-                                        <TableCell className="px-5 py-4 text-start">
+                                        <TableCell className="px-5 py-4 text-start">{tx.shares}</TableCell>
+                                        <TableCell className="px-5 py-4 text-start">{tx.price}</TableCell>
+                                        {/* <TableCell className="px-5 py-4 text-start">
                                             <div className="flex items-center gap-2">
                                                 <Badge
                                                     size="sm"
@@ -212,7 +146,7 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                                                     className="min-w-[120px]"
                                                 />
                                             </div>
-                                        </TableCell>
+                                        </TableCell> */}
                                         <TableCell className="px-5 py-4 text-start">
                                             {new Date(tx.created_at).toLocaleString()}
                                         </TableCell>

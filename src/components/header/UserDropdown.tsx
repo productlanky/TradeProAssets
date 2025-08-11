@@ -1,16 +1,20 @@
 "use client";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
-import { Session } from "@supabase/supabase-js";
+import { getUser, logOut } from "@/lib/appwrite/auth";
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
+import { RiAdminFill } from "react-icons/ri";
 
-export default function UserDropdown({ user }: { user?: Session }) {
+export default function UserDropdown() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [admin, setAdmin] = useState<'admin' | 'user'>();
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();
@@ -18,16 +22,47 @@ export default function UserDropdown({ user }: { user?: Session }) {
   }
 
   async function signOut(): Promise<void> {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      toast(error.message);
-      return;
+    try {
+      await logOut(); // ✅ deletes current session
+      toast.success("Signed out successfully");
+      router.push("/signin");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign out");
     }
-
-    toast("Signed out successfully");
-    router.push("/signin");
   }
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await getUser();
+      if (!user) return;
+
+      if (user.labels?.includes("admin")) {
+        setAdmin("admin");
+      } else {
+        setAdmin("user");
+      }
+
+      try {
+        const response = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("userId", user.$id)]
+        );
+
+        setUser(response.documents[0]);
+
+        if (!user) {
+          console.warn("No profile found for user.");
+          return;
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
 
   function closeDropdown() {
     setIsOpen(false);
@@ -42,12 +77,12 @@ export default function UserDropdown({ user }: { user?: Session }) {
           <Image
             width={44}
             height={44}
-            src="/images/user/owner.jpg"
+            src="/images/user/user-38.jpg"
             alt="User"
           />
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">{user?.user.user_metadata.first_name}</span>
+        <span className="block mr-1 font-medium text-theme-sm">{user?.firstName}</span>
 
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
@@ -75,10 +110,10 @@ export default function UserDropdown({ user }: { user?: Session }) {
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            {user?.user.user_metadata.first_name + ' ' + user?.user.user_metadata.last_name}
+            {user?.firstName + ' ' + user?.lastName}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            {user?.user.user_metadata.email}
+            {user?.email}
           </span>
         </div>
 
@@ -156,6 +191,17 @@ export default function UserDropdown({ user }: { user?: Session }) {
                 />
               </svg>
               Support
+            </DropdownItem>
+          </li>
+          <li>
+            <DropdownItem
+              onItemClick={closeDropdown}
+              tag="a"
+              href={'/controlPanel'}
+              className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+            >
+              <RiAdminFill size={18} />
+              Admin Panel
             </DropdownItem>
           </li>
         </ul>

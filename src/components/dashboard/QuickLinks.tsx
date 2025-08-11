@@ -37,7 +37,7 @@ const links = [
 
 export default function QuickLinks() {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 sm:p-6 shadow-sm">
+    <div className="rounded-2xl border h-full border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 sm:p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-5">
         Quick Links
       </h3>

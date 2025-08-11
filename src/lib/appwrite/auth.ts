@@ -7,7 +7,7 @@ export async function signUp(email: string, password: string, name: string) {
 }
 
 export async function logIn(email: string, password: string) {
-  return await account.createSession(email, password);
+  return await account.createEmailPasswordSession(email, password);
 }
 
 export async function getUser() {

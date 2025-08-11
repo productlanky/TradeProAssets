@@ -14,7 +14,7 @@ export default function UserMetaCard({ first_name, last_name, email, state, coun
               <Image
                 width={80}
                 height={80}
-                src="/images/user/owner.jpg"
+                src="/images/user/user-38.jpg"
                 alt="user"
               />
             </div>

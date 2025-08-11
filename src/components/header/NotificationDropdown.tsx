@@ -3,9 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { DropdownItem } from "../ui/dropdown/DropdownItem";
-import { supabase } from "@/lib/supabase/client";
+import { DropdownItem } from "../ui/dropdown/DropdownItem"; 
 import Loading from "../ui/Loading";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, NOTIFICATION_COLLECTION } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
 
 type Notification = {
   id: string;
@@ -25,26 +27,39 @@ export default function NotificationDropdown() {
 
   useEffect(() => {
     const fetchNotifications = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const user = await getUser(); // Get logged-in Appwrite user
+        if (!user) return;
 
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        const res = await databases.listDocuments(
+          DB_ID,
+          NOTIFICATION_COLLECTION,
+          [
+            Query.equal("userId", user.$id),
+            Query.orderDesc("$createdAt")
+          ]
+        );
 
-      if (error) {
-        console.error("Error fetching notifications:", error);
-      } else {
-        setNotifications(data);
+        setNotifications(
+          res.documents.map((doc: any) => ({
+            id: doc.$id,
+            title: doc.title,
+            message: doc.message,
+            type: doc.type,
+            read: doc.read,
+            created_at: doc.$createdAt,
+          }))
+        );
 
         // Check if any are unread
-        const hasUnread = data.some(n => !n.read);
+        const hasUnread = res.documents.some((n: any) => !n.read);
         setNotifying(hasUnread);
 
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchNotifications();
@@ -63,21 +78,41 @@ export default function NotificationDropdown() {
     toggleDropdown();
 
     if (notifying) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const user = await getUser();
+        if (!user) return;
 
-      // Mark all as read
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
+        // 1️⃣ Get unread notifications for the user
+        const unreadRes = await databases.listDocuments(
+          DB_ID,
+          NOTIFICATION_COLLECTION,
+          [
+            Query.equal("userId", user.$id),
+            Query.equal("read", false)
+          ]
+        );
 
-      // Update UI immediately
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, read: true }))
-      );
-      setNotifying(false);
+        // 2️⃣ Mark each unread notification as read
+        const updatePromises = unreadRes.documents.map((n) =>
+          databases.updateDocument(
+            DB_ID,
+            NOTIFICATION_COLLECTION,
+            n.$id,
+            { read: true }
+          )
+        );
+
+        await Promise.all(updatePromises);
+
+        // 3️⃣ Update UI immediately
+        setNotifications((prev) =>
+          prev.map((n) => ({ ...n, read: true }))
+        );
+        setNotifying(false);
+
+      } catch (error) {
+        console.error("Error marking notifications as read:", error);
+      }
     }
   };
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
 import { QRCodeCanvas } from "qrcode.react";
 import RefBonus from "./RefBonus";
 import RefOptions from "./RefOptions";
@@ -9,6 +8,9 @@ import InviteFriends from "./InviteFriends";
 import ReferredUsersTable from "./ReferredUsersTable";
 import { useRef } from "react";
 import Button from "../ui/button/Button";
+import { getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { Query } from "appwrite";
 
 
 type ReferredUser = {
@@ -33,37 +35,61 @@ export default function ReferralPage() {
 
   useEffect(() => {
     async function fetchReferralInfo() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        // 1️⃣ Get signed-in user
+        const user = await getUser().catch(() => null);
+        if (!user) return;
 
-      if (!user) return;
+        // 2️⃣ Fetch profile (referral code)
+        const profileRes = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("userId", user.$id)]
+        );
+        const profileDoc = profileRes.documents[0];
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("referral_code")
-        .eq("id", user.id)
-        .single();
+        const code = profileDoc?.refereeId;
+        if (code) {
+          setReferralLink(`${baseUrl}/signup?ref=${code}`);
+        }
 
-      const code = profile?.referral_code;
-      if (code) {
-        setReferralLink(`${baseUrl}/signup?ref=${code}`);
+        // 3️⃣ Fetch referrals + join profiles manually (no joins in Appwrite)
+        const referralsList = await databases.listDocuments(
+          DB_ID,
+          PROFILE_COLLECTION_ID,
+          [Query.equal("referredBy", profileDoc.refereeId)],
+        );
+
+        // If you want referred users' emails, you’d need to loop & fetch each profile
+        const referralsWithProfiles = await Promise.all(
+          referralsList.documents.map(async (ref) => {
+            return {
+              id: ref.$id,
+              bonus: 10,
+              referred_by: ref.referredBy || "",
+              created_at: ref.$createdAt,
+              profiles: {
+                email: ref.email,
+                created_at: ref.$createdAt,
+              },
+            } as ReferredUser;
+          })
+        );
+
+        setReferredUsers(referralsWithProfiles);
+        setTotalReferred(referralsList.total);
+
+        const totalBonus = totalReferred * 10
+        setReferralBonus(totalBonus);
+
+      } catch (error) {
+        console.error("Error fetching referral info:", error);
       }
-
-      const { data: referrals } = await supabase
-        .from("referrals")
-        .select("*, profiles(email, created_at)")
-        .eq("referred_by", user.id);
-
-      setReferredUsers(referrals || []);
-      setTotalReferred(referrals?.length || 0);
-
-      const total = referrals?.reduce((sum, ref) => sum + (ref.bonus || 0), 0);
-      setReferralBonus(total || 0);
     }
 
     fetchReferralInfo();
   }, [baseUrl]);
+
 
   const qrRef = useRef<HTMLCanvasElement>(null);
 

@@ -2,12 +2,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import UserMetaCard from './UserMetaCard';
 import UserInfoCard from './UserInfoCard';
-import UserAddressCard from './UserAddressCard';
-import { supabase } from '@/lib/supabase/client';
+import UserAddressCard from './UserAddressCard'; 
 import { useRouter } from 'next/navigation';
 import SetWithdrawalPassword from './SetWithdrawalPassword';
 import KYCUpload from './KycUpload';
 import Loading from '../ui/Loading';
+import { databases, DB_ID, PROFILE_COLLECTION_ID } from '@/lib/appwrite/client';
+import { Query } from 'appwrite';
+import { getUser } from '@/lib/appwrite/auth';
 
 export interface ProfileType {
     id: string;
@@ -41,32 +43,49 @@ export default function ProfilePage() {
 
     const fetchProfile = useCallback(async () => {
         setLoading(true);
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        const user = await getUser();
+        if (!user) return;
 
-        if (authError || !user) {
+        const profileResult = await databases.listDocuments(
+            DB_ID,
+            PROFILE_COLLECTION_ID,
+            [Query.equal("userId", user.$id)]
+        );
+
+        if (!user) {
             console.error('Not logged in');
             router.replace('/signin');
             return;
         }
 
-        const { data, error } = await supabase
-            .from('profiles')
-            .select(`
-                *,
-                tiers (
-                    name,
-                    min_referrals
-                )
-            `)
-            .eq('id', user.id)
-            .single();
-
         setLoading(false);
 
-        if (error || !data) {
-            console.error(error?.message || 'No profile found');
+        if (!profileResult || !profileResult.documents || profileResult.documents.length === 0) {
+            console.error('No profile found');
         } else {
-            setProfile({ ...data, refresh: fetchProfile });
+            const doc = profileResult.documents[0];
+            setProfile({
+                id: doc.id ?? doc.$id,
+                first_name: doc.firstName,
+                last_name: doc.lastName,
+                email: doc.email,
+                phone: doc.phone,
+                country: doc.country,
+                state: doc.state,
+                city: doc.city,
+                zip: doc.zip,
+                address: doc.address,
+                gender: doc.gender,
+                dob: doc.dob,
+                referral_code: doc.refereeId,
+                referred_by: doc.referredBy,
+                photo_url: doc.photo_url,
+                created_at: doc.created_at ?? doc.$createdAt,
+                tier_level: doc.tierLevel,
+                tiers: doc.tiers,
+                withdrawal_password: doc.withdrawalPassword,
+                refresh: fetchProfile,
+            });
         }
     }, [router]);
 
