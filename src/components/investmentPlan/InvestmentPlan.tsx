@@ -24,11 +24,11 @@ export default function InvestmentPlansPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number>(0);
+  const [balanc, setBalanc] = useState<number>(0);
   const [investing, setInvesting] = useState<string | null>(null);
   const [investment, setInvestment] = useState<string | null>(null);
 
   useEffect(() => {
-
     const fetchData = async () => {
       const user = await getUser();
       if (!user) return;
@@ -56,7 +56,8 @@ export default function InvestmentPlansPage() {
           toast.error("Failed to fetch balance");
           return;
         }
-        setBalance(profile?.balance || 0);
+        setBalance(profile?.totalDeposit || 0);
+        setBalanc(profile?.balance || 0);
         setUserId(user.$id);
         setPlans(plan);
 
@@ -120,7 +121,8 @@ export default function InvestmentPlansPage() {
 
       // 2. Update balance in profile
       await databases.updateDocument(DB_ID, PROFILE_COLLECTION_ID, profileId, {
-        balance: balance - plan.min_amount,
+        totalDeposit: balance - plan.min_amount,
+        balance: balanc - plan.min_amount
       });
 
       // 3. Show success

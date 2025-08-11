@@ -3,10 +3,11 @@ import React from "react";
 import ProfilePage from "@/components/user-profile/ProfilePage";
 
 export const metadata: Metadata = {
-  title: "Next.js Profile | TailAdmin - Next.js Dashboard Template",
+  title: "Trade Pro - Blockchain Company",
   description:
-    "This is Next.js Profile page for TailAdmin - Next.js Tailwind CSS Admin Dashboard Template",
+    "Earn huge return on investment. With our professional team of Traders, you are guaranteed of your earnings.",
 };
+
 
 
 export default function Profile() {

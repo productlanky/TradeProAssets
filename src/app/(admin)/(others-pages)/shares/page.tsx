@@ -3,18 +3,28 @@
 import Input from "@/components/form/input/InputField";
 import Button from "@/components/ui/button/Button";
 import { getUser } from "@/lib/appwrite/auth";
-import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID } from "@/lib/appwrite/client";
+import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID} from "@/lib/appwrite/client";
 import { ID, Query } from "appwrite";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
+
+export async function fetchTeslaPrice() {
+  const apiKey = "3d3ef5b8ef164f359687f7081be8d524";
+  const res = await fetch(`https://api.twelvedata.com/price?symbol=TSLA&apikey=${apiKey}`);
+  const data = await res.json();
+  return data.price;
+}
+
 export default function BuySharesPage() {
-    const [sharePrice] = useState(25.5);
+
+    const [sharePrice, setSharePrice] = useState(0);
     const [quantity, setQuantity] = useState<number | "">("");
     const [amount, setAmount] = useState<number | "">("");
     const [mode, setMode] = useState<"shares" | "amount">("shares");
     const [balance, setBalance] = useState<number>(0);
+    const [balanc, setBalanc] = useState<number>(0);
     const [error, setError] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [documentId, setDocumentId] = useState('')
@@ -28,7 +38,8 @@ export default function BuySharesPage() {
             ]);
 
             if (res.total > 0) {
-                setBalance(res.documents[0].balance || 0);
+                setBalance(res.documents[0].totalDeposit || 0);
+                setBalanc(res.documents[0].balance || 0);
             }
 
             setDocumentId(res.documents[0].$id)
@@ -38,6 +49,12 @@ export default function BuySharesPage() {
     };
 
     useEffect(() => {
+
+        fetchTeslaPrice().then(price => {
+            setSharePrice(parseFloat(price));
+            console.log("Tesla Stock Price:", price);
+        });
+
         fetchBalance();
     }, []);
 
@@ -115,8 +132,10 @@ export default function BuySharesPage() {
 
             // Deduct balance locally & in database
             const newBalance = balance - Number(amount);
+            const newBalanc = balanc - Number(amount);
             await databases.updateDocument(DB_ID, PROFILE_COLLECTION_ID, documentId, {
-                balance: newBalance,
+                totalDeposit: newBalance,
+                balance: newBalanc,
             });
 
             setBalance(newBalance); // Update UI instantly
@@ -165,7 +184,7 @@ export default function BuySharesPage() {
 
                 {/* Balance Info */}
                 <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg flex items-center justify-between mb-6">
-                    <span className="text-gray-600 dark:text-gray-300 font-medium">Your Balance</span>
+                    <span className="text-gray-600 dark:text-gray-300 font-medium">Total Deposit</span>
                     <span className="text-lg font-bold text-gray-900 dark:text-white">${balance.toFixed(2)}</span>
                 </div>
 

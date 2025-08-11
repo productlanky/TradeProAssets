@@ -10,9 +10,10 @@ import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import KycDocumentCard from "./KycDocumentCard";
 import Link from "next/link";
-import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
+import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import Loading from "../ui/Loading";
+import { fetchTeslaPrice } from "@/app/(admin)/(others-pages)/shares/page";
 
 
 type ProfileField =
@@ -28,7 +29,8 @@ type ProfileField =
   | "profit"
   | "address"
   | "balance"
-  | "dob";
+  | "dob"
+  | "withdrawal_limit"
 
 interface ProfileType {
   id: string;
@@ -47,6 +49,7 @@ interface ProfileType {
   created_at: string;
   kyc_status: string;
   profit: number;
+  withdrawal_limit: number;
   updated_at: string
 }
 
@@ -64,6 +67,7 @@ const profileFields: ProfileField[] = [
   "address",
   "balance",
   "dob",
+  "withdrawal_limit"
 ];
 
 const displayFields = [...profileFields, "created_at", "kyc_status", 'updated_at'];
@@ -83,59 +87,76 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
   const [frontImageUrl, setFrontImageUrl] = useState<string | null>(null);
   const [backImageUrl, setBackImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sharePrice, setSharePrice] = useState(0);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      setLoading(true);
+    const init = async () => {
+      const price = await fetchTeslaPrice();
+      setSharePrice(parseFloat(price));
 
-      try {
-
-        // Fetch the profile document using their $id
-        const res = await databases.listDocuments(
-          DB_ID,
-          PROFILE_COLLECTION_ID,
-          [Query.equal("$id", id)]
-        );
-
-        if (!res.documents.length) {
-          console.error("User profile not found");
-          return;
-        }
-
-        const doc = res.documents[0];
-        const profile: ProfileType = {
-          id: doc.userId,
-          first_name: doc.firstName,
-          last_name: doc.lastName,
-          email: doc.email,
-          gender: doc.gender,
-          phone: doc.phone,
-          country: doc.country,
-          state: doc.state,
-          city: doc.city,
-          zip: doc.zip,
-          address: doc.address,
-          balance: doc.balance,
-          dob: doc.dob,
-          created_at: doc.$createdAt,
-          updated_at: doc.$updatedAt,
-          kyc_status: doc.kycStatus,
-          profit: parseFloat(doc.profit) || 0
-        };
-        setBackImageUrl(doc.kycBack)
-        setFrontImageUrl(doc.kycFront)
-        setProfile(profile); // store the profile in state
-        setKycStatus(doc.kycStatus || "");
-
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      } finally {
-        setLoading(false);
-      }
+      await fetchUser(parseFloat(price)); // pass price directly
     };
 
-    fetchUser();
+    init();
   }, [id]);
+
+  const fetchUser = async (teslaPrice: number) => {
+    setLoading(true);
+    try {
+      const res = await databases.listDocuments(DB_ID, PROFILE_COLLECTION_ID, [Query.equal("$id", id)]);
+      if (!res.documents.length) return;
+
+      const doc = res.documents[0];
+      const ress = await databases.listDocuments(
+        DB_ID,
+        STOCKLOG_COLLECTION_ID,
+        [Query.equal("userId", doc.userId), Query.orderDesc("$createdAt")]
+      );
+
+      const totalShare = ress.documents.reduce((sum, tx) => sum + (tx.shares || 0), 0) || 0;
+
+      setProfile({
+        id: doc.userId,
+        first_name: doc.firstName,
+        last_name: doc.lastName,
+        email: doc.email,
+        gender: doc.gender,
+        phone: doc.phone,
+        country: doc.country,
+        state: doc.state,
+        city: doc.city,
+        zip: doc.zip,
+        address: doc.address,
+        balance: ((parseFloat(doc.balance) || 0) +
+          (parseFloat(doc.profit) || 0) +
+          ((totalShare || 0) * teslaPrice)),
+        dob: doc.dob,
+        created_at: doc.$createdAt,
+        updated_at: doc.$updatedAt,
+        kyc_status: doc.kycStatus,
+        profit: parseFloat(doc.profit) || 0,
+        withdrawal_limit: doc.withdrawalLimit || 0
+      });
+
+      setBackImageUrl(doc.kycBack);
+      setFrontImageUrl(doc.kycFront);
+      setKycStatus(doc.kycStatus || "");
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeslaPrice().then(price => setSharePrice(parseFloat(price)));
+  }, []);
+
+  useEffect(() => {
+    if (sharePrice > 0) {
+      fetchUser(sharePrice);
+    }
+  }, [sharePrice]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -179,22 +200,6 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
         return 0;
       };
 
-
-      const profitDiff = parseNumber(updatedFields.profit) - profile.profit;
-
-      let newBalance;
-      if (profile.balance < 0) {
-        newBalance = profile.balance + profitDiff;
-      } else {
-        newBalance = profile.balance - profitDiff;
-      }
-
-      // Override balance update with newBalance if balance not explicitly edited
-
-      updatedFields.balance = newBalance;
-
-
-
       const payload: Record<string, string | number | undefined> = {
         firstName: updatedFields.first_name,
         lastName: updatedFields.last_name,
@@ -206,14 +211,10 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
         city: updatedFields.city,
         zip: updatedFields.zip,
         address: updatedFields.address,
-        balance: updatedFields.balance !== undefined
-          ? parseNumber(updatedFields.balance)
-          : profile.balance,
         dob: updatedFields.dob,
         kycStatus: kycStatus,
-        profit: updatedFields.profit !== undefined
-          ? parseNumber(updatedFields.profit)
-          : profile.profit,
+        profit: parseNumber(updatedFields.profit) + profile.profit,
+        withdrawalLimit: parseNumber(updatedFields.withdrawal_limit),
       };
 
 
@@ -276,13 +277,16 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
                     {field.replace("_", " ")}
                   </p>
                   <p className="text-sm font-medium text-gray-800 dark:text-white/90 capitalize">
-                    {field === "created_at" || field === "dob" || field === 'updated_at'
+                    {field === "created_at" || field === "dob" || field === "updated_at"
                       ? profile[field as keyof ProfileType]
                         ? new Date(profile[field as keyof ProfileType] as string).toLocaleDateString()
                         : "-"
                       : field === "kyc_status"
                         ? kycStatus ?? "-"
-                        : (profile[field as keyof ProfileType] ?? "-")}
+                        : field === "balance"
+                          ? (Number(profile[field as keyof ProfileType]) || 0).toFixed(2)
+                          : (profile[field as keyof ProfileType] ?? "-")}
+
                   </p>
                 </div>
               ))}

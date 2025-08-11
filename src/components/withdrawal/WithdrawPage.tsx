@@ -2,21 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner"; 
+import { toast } from "sonner";
 import { validate as validateBitcoin } from "bitcoin-address-validation";
 import WithdrawAlert from "./WithdrawAlert";
-import WithdrawForm from "./WithdrawForm";
+import WithdrawForm, { WithdrawFormFields } from "./WithdrawForm";
 import { getUser } from "@/lib/appwrite/auth";
 import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
 import { ID, Query } from "appwrite";
 import { Skeleton } from "../ui/skeleton";
+import { useRouter } from "next/navigation";
 
-type WithdrawalForm = {
-    amount: number;
-    crypto: string;
-    address: string;
-    password: string;
-};
 
 type Tier = {
     level: string;
@@ -38,11 +33,12 @@ export default function WithdrawPage() {
     const [maxWithdrawAmount, setMaxWithdrawAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
+    const router = useRouter();
     const {
         reset,
-    } = useForm<WithdrawalForm>({
+    } = useForm<WithdrawFormFields>({
         defaultValues: {
-            crypto: "BTC",
+            method: "BTC",
         },
     });
 
@@ -78,12 +74,8 @@ export default function WithdrawPage() {
                 setProfile(mappedProfile);
 
                 console.log("Profile loaded:", mappedProfile);
-                // 3️⃣ Calculate max withdrawal amount
-                if (profileData.tiers && profileData.tiers.length > 0) {
-                    setMaxWithdrawAmount(profileData.tiers[0].min_referrals * 100);
-                } else {
-                    setMaxWithdrawAmount(50);
-                }
+                setMaxWithdrawAmount(profileData.withdrawalLimit);
+
 
                 setIsLoading(false);
             } catch (error) {
@@ -100,7 +92,7 @@ export default function WithdrawPage() {
         return false;
     };
 
-    const onSubmit = async (data: WithdrawalForm) => {
+    const onSubmit = async (data: WithdrawFormFields) => {
         if (!profile || isLoading) return;
 
         // ✅ Validation checks
@@ -109,7 +101,7 @@ export default function WithdrawPage() {
             return;
         }
 
-        if (!validateAddress(data.crypto, data.address)) {
+        if (data.method === 'BTC' && !data.address || data.method === 'BTC' && !validateAddress(data.method, data.address ? data.address : "")) {
             toast.error("Invalid crypto address.");
             return;
         }
@@ -142,7 +134,8 @@ export default function WithdrawPage() {
                 ID.unique(),
                 {
                     userId: profile.id,
-                    type: "withdrawal",
+                    type: 'withdrawal',
+                    method: data.method,
                     amount: parseFloat(data.amount.toString()),
                     status: "pending",
                 }
@@ -173,6 +166,7 @@ export default function WithdrawPage() {
             });
 
             toast.success("Withdrawal submitted.");
+            router.push('/transactions');
             reset();
         } catch (error) {
             console.error("Withdrawal error:", error);

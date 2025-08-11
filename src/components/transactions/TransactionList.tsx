@@ -20,6 +20,7 @@ type Transaction = {
   type: string;
   amount: number;
   status: string;
+  method: string;
   created_at: string;
 };
 
@@ -48,6 +49,7 @@ export default function TransactionList() {
             type: doc.type,
             amount: doc.amount,
             status: doc.status,
+            method: doc.method,
             created_at: doc.$createdAt,
           }))
         );
@@ -72,7 +74,7 @@ export default function TransactionList() {
         <div className="min-w-[720px]">
           <Table>
             {/* Table Header */}
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+            <TableHeader className="border-b uppercase border-gray-100 dark:border-white/[0.05]">
               <TableRow>
                 <TableCell
                   isHeader
@@ -85,6 +87,12 @@ export default function TransactionList() {
                   className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
                   Amount
+                </TableCell>
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                >
+                  Method
                 </TableCell>
                 <TableCell
                   isHeader
@@ -116,6 +124,9 @@ export default function TransactionList() {
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
                     <TableCell className="px-5 py-4">
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
                       <Skeleton className="h-4 w-28" />
                     </TableCell>
                   </TableRow>
@@ -132,11 +143,14 @@ export default function TransactionList() {
               ) : (
                 transactions.map((tx) => (
                   <TableRow key={tx.id}>
-                    <TableCell className="px-5 py-4 text-start capitalize text-theme-sm text-gray-700 dark:text-gray-300">
+                    <TableCell className="px-5 uppercase py-4 text-start text-theme-sm text-gray-700 dark:text-gray-300">
                       {tx.type.replace("_", " ")}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-theme-sm text-gray-600 dark:text-gray-300">
                       ${tx.amount.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-theme-sm uppercase text-gray-600 dark:text-gray-300">
+                      {tx.method}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-theme-sm text-gray-600 dark:text-gray-300">
                       <Badge

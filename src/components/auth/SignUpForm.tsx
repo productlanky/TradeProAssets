@@ -209,6 +209,7 @@ export default function SignUpForm() {
         amount: 10,
         status: "approved",
         type: "Welcome Bonus",
+        method: 'system',
       }, [
         Permission.read(Role.any()),
         Permission.write(Role.any())

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
     Table,
@@ -8,12 +8,13 @@ import {
     TableCell,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"; 
-import { databases, DB_ID, STOCKLOG_COLLECTION_ID} from "@/lib/appwrite/client";
+} from "@/components/ui/table";
+import { databases, DB_ID, STOCKLOG_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import Loading from "../ui/Loading";
 import { RiStockFill } from "react-icons/ri";
 import { Skeleton } from "../ui/skeleton";
+import { fetchTeslaPrice } from "@/app/(admin)/(others-pages)/shares/page";
 
 interface Props {
     userId: string;
@@ -32,8 +33,15 @@ export default function AdminUserStockTable({ userId }: Props) {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [totalShares, setTotalShare] = useState<number | null>(null);
+    const [sharePrice, setSharePrice] = useState(0);
 
     useEffect(() => {
+        fetchTeslaPrice().then(price => {
+            setSharePrice(parseFloat(price));
+            console.log("Tesla Stock Price:", price);
+        });
+
+
         const fetchTransactions = async () => {
             try {
                 setLoading(true);
@@ -90,7 +98,7 @@ export default function AdminUserStockTable({ userId }: Props) {
                             <div>
                                 <span className="text-sm text-gray-500 dark:text-gray-400">Total Shares</span>
                                 <h4 className="mt-2 font-bold text-gray-800 text-2xl dark:text-white/90">
-                                    {loading ? <Skeleton className="h-6 w-24" /> : `$${totalShares?.toFixed(2)}`}
+                                    {loading ? <Skeleton className="h-6 w-24" /> : `$${((totalShares || 0) * sharePrice)?.toFixed(2)}`}
                                 </h4>
                             </div>
                         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react";
 import Select from "@/components/form/Select";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,7 @@ import Badge from "@/components/ui/badge/Badge";
 import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
 import { ID, Query } from "appwrite";
 import Loading from "../ui/Loading";
+import Link from "next/link";
 
 interface Props {
     userId: string;
@@ -23,9 +24,11 @@ type Transaction = {
     id: string;
     user_id: string;
     amount: number;
-    type: "deposit" | "withdrawal";
+    type: "deposit" | "withdrawal" | 'welcome bonus';
     status: "pending" | "approved" | "rejected";
     created_at: string;
+    method: string;
+    photo?: string;
 };
 
 
@@ -59,8 +62,10 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                         user_id: doc.user_id ?? doc.userId,
                         amount: doc.amount,
                         type: doc.type,
+                        method: doc.method,
                         status: doc.status,
                         created_at: doc.created_at ?? doc.$createdAt,
+                        photo: doc.photoUrl
                     }))
                 );
             } catch (error) {
@@ -116,7 +121,9 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
             );
 
             const profileDoc = profileRes.documents[0];
-            let newBalance = profileDoc?.balance ?? 0;
+            let newBalance = profileDoc?.totalDeposit ?? 0;
+            let newBalanc = profileDoc?.balance ?? 0;
+            let newAmount = profileDoc?.balance ?? 0;
 
             const wasApproved = oldStatus === "approved";
             const willBeApproved = newStatus === "approved";
@@ -124,16 +131,32 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
             // ✅ Adjust balance only when approval status changes
             if (!wasApproved && willBeApproved) {
                 newBalance += type === "deposit" ? amount : -amount;
+                newBalanc += type === "deposit" ? amount : -amount;
+                newAmount += type === "withdrawal" ? -amount : amount;
             } else if (wasApproved && !willBeApproved) {
                 newBalance += type === "deposit" ? -amount : amount;
+                newBalanc += type === "deposit" ? -amount : amount;
+                newAmount += type === "withdrawal" ? amount : -amount;
             }
             // ✅ Update profile balance if changed
-            if (profileDoc) {
+            if (profileDoc && type === 'deposit') {
                 await databases.updateDocument(
                     DB_ID,
                     PROFILE_COLLECTION_ID,
                     profileDoc.$id,
-                    { balance: newBalance }
+                    {
+                        totalDeposit: newBalance,
+                        balance: newBalanc
+                    }
+                );
+            } else {
+                await databases.updateDocument(
+                    DB_ID,
+                    PROFILE_COLLECTION_ID,
+                    profileDoc.$id,
+                    {
+                        balance: newAmount
+                    }
                 );
             }
 
@@ -154,7 +177,7 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
 
 
 
-    if (loading) return <Loading/>;
+    if (loading) return <Loading />;
 
     if (!transactions.length)
         return <div className="p-6 text-gray-500 text-center">No transactions found.</div>;
@@ -165,10 +188,10 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                 <div className="max-w-full overflow-x-auto">
                     <div className="min-w-[1024px]">
                         <Table>
-                            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] uppercase">
                                 <TableRow>
                                     <TableCell isHeader className="px-5 py-3 text-start text-theme-xs text-gray-500 font-medium dark:text-gray-400">
-                                        ID
+                                        Type (click to see receipt)
                                     </TableCell>
                                     <TableCell isHeader className="px-5 py-3 text-start text-theme-xs text-gray-500 font-medium dark:text-gray-400">
                                         Amount
@@ -188,9 +211,15 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                                 {transactions.map((tx) => (
                                     <TableRow key={tx.id}>
-                                        <TableCell className="px-5 py-4 text-start">{tx.id}</TableCell>
+                                        <TableCell className="px-5 py-4 uppercase text-start">
+                                            {
+                                                tx.photo ?
+                                                    <Link className="text-green-500" target="_blank" href={tx.photo}>{tx.type}</Link>
+                                                    : tx.type
+                                            }
+                                        </TableCell>
                                         <TableCell className="px-5 py-4 text-start">${tx.amount.toLocaleString()}</TableCell>
-                                        <TableCell className="px-5 py-4 text-start">{tx.type}</TableCell>
+                                        <TableCell className="px-5 py-4 text-start uppercase">{tx.method}</TableCell>
                                         <TableCell className="px-5 py-4 text-start">
                                             <div className="flex items-center gap-2">
                                                 <Badge

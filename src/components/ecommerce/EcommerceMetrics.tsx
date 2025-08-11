@@ -5,10 +5,11 @@ import {
   WalletIcon,
   BanknoteIcon,
 } from "lucide-react"; // Correct icons for money
-import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import { getUser } from "@/lib/appwrite/auth";
 import { RiStockFill } from "react-icons/ri";
+import { fetchTeslaPrice } from "@/app/(admin)/(others-pages)/shares/page";
 // import Badge from "../ui/badge/Badge"; // optional if needed
 
 export const EcommerceMetrics = () => {
@@ -17,8 +18,18 @@ export const EcommerceMetrics = () => {
   const [totalDeposit, setTotalDeposit] = useState<number | null>(null);
   const [totalShares, setTotalShare] = useState<number | null>(null);
   const [profit, setProfit] = useState<number | null>(null);
+  const [sharePrice, setSharePrice] = useState(0)
+
+
 
   useEffect(() => {
+
+    fetchTeslaPrice().then(price => {
+      setSharePrice(parseFloat(price));
+      console.log("Tesla Stock Price:", price);
+    });
+
+
     const fetchData = async () => {
       const user = await getUser();
       if (!user) return;
@@ -33,19 +44,6 @@ export const EcommerceMetrics = () => {
         const profile = response.documents[0];
 
 
-        const transaction = await databases.listDocuments(
-          DB_ID,
-          TRANSACTION_COLLECTION,
-          [
-            Query.equal("userId", user.$id),
-            Query.equal("type", "deposit"), // Only deposits
-            Query.equal("status", "approved") // Only approved deposits
-          ]
-        );
-
-        const total = transaction?.documents?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
-
-
         // Get all transactions for the current user
         const { documents } = await databases.listDocuments(DB_ID, STOCKLOG_COLLECTION_ID, [
           Query.equal("userId", user.$id)
@@ -57,7 +55,7 @@ export const EcommerceMetrics = () => {
 
         setBalance(profile?.balance || 0);
         setTotalShare(totalShare)
-        setTotalDeposit(total);
+        setTotalDeposit(profile?.totalDeposit || 0);
         setProfit(profile?.profit || 0)
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -83,7 +81,7 @@ export const EcommerceMetrics = () => {
         <div>
           <span className="text-sm text-gray-500 dark:text-gray-400">Balance</span>
           <h4 className="mt-2 font-bold text-gray-800 text-2xl dark:text-white/90">
-            {loading ? <Skeleton className="h-6 w-24" /> : `$${balance?.toFixed(2)}`}
+            {loading ? <Skeleton className="h-6 w-24" /> : `$${((balance || 0) + (profit || 0) + ((totalShares || 0) * sharePrice))?.toFixed(2)}`}
           </h4>
         </div>
       </div>
@@ -109,7 +107,7 @@ export const EcommerceMetrics = () => {
         <div>
           <span className="text-sm text-gray-500 dark:text-gray-400">Shares</span>
           <h4 className="mt-2 font-bold text-gray-800 text-2xl dark:text-white/90">
-            {loading ? <Skeleton className="h-6 w-24" /> : `${totalShares?.toFixed(2)}`}
+            {loading ? <Skeleton className="h-6 w-24" /> : `$${((totalShares || 0) * sharePrice).toFixed(2)} ~ ${totalShares?.toFixed(2)}`}
           </h4>
         </div>
       </div>
