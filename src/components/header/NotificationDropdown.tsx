@@ -41,7 +41,7 @@ export default function NotificationDropdown() {
         );
 
         setNotifications(
-          res.documents.map((doc: any) => ({
+          res.documents.map((doc) => ({
             id: doc.$id,
             title: doc.title,
             message: doc.message,
@@ -52,7 +52,7 @@ export default function NotificationDropdown() {
         );
 
         // Check if any are unread
-        const hasUnread = res.documents.some((n: any) => !n.read);
+        const hasUnread = res.documents.some((n) => !n.read);
         setNotifying(hasUnread);
 
       } catch (error) {

@@ -45,7 +45,7 @@ export default function UserInvestments() {
 
         // If you need to fetch each related plan separately
         setInvestments(
-          documents.map((inv: any) => {
+          documents.map((inv) => {
 
             const today = new Date();
             const endDate = inv.end_date ? new Date(inv.end_date) : null;

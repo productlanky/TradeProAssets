@@ -43,7 +43,7 @@ export default function TransactionList() {
         ]);
 
         setTransactions(
-          (response.documents || []).map((doc: any) => ({
+          (response.documents || []).map((doc) => ({
             id: doc.$id,
             type: doc.type,
             amount: doc.amount,

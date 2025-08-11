@@ -54,7 +54,7 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
                 );
 
                 setTransactions(
-                    (res.documents || []).map((doc: any) => ({
+                    (res.documents || []).map((doc) => ({
                         id: doc.$id,
                         user_id: doc.user_id ?? doc.userId,
                         amount: doc.amount,

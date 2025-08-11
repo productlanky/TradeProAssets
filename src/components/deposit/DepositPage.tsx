@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import Button from "@/components/ui/button/Button";
 import { toast } from "sonner";
@@ -52,7 +52,7 @@ const DepositPage = () => {
 
       setTransactionId(transaction.$id);
       setStep("countdown");
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
       toast.error("Failed to start deposit.");
     }

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Select from "@/components/form/Select";
+import { useEffect, useState } from "react"; 
 import { toast } from "sonner";
 import {
     Table,
@@ -9,10 +8,9 @@ import {
     TableCell,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import Badge from "@/components/ui/badge/Badge";
-import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
-import { ID, Query } from "appwrite";
+} from "@/components/ui/table"; 
+import { databases, DB_ID, STOCKLOG_COLLECTION_ID} from "@/lib/appwrite/client";
+import { Query } from "appwrite";
 import Loading from "../ui/Loading";
 import { RiStockFill } from "react-icons/ri";
 import { Skeleton } from "../ui/skeleton";
@@ -50,7 +48,7 @@ export default function AdminUserStockTable({ userId }: Props) {
                 );
 
                 setTransactions(
-                    (res.documents || []).map((doc: any) => ({
+                    (res.documents || []).map((doc) => ({
                         id: doc.$id,
                         user_id: doc.user_id ?? doc.userId,
                         amount: doc.amount,

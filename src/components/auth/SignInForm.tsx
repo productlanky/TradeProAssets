@@ -81,9 +81,10 @@ export default function SignInForm() {
         router.push("/dashboard"); // regular user dashboard
       }
 
-    } catch (err: any) {
+    } catch (err ) {
       console.error(err);
-      toast.error(err?.message || "Login failed");
+      const errorMessage = err instanceof Error ? err.message : "Login failed";
+      toast.error(errorMessage);
 
     } finally {
       // ✅ Always stop loading

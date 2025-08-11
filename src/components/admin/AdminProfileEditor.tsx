@@ -14,9 +14,6 @@ import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import Loading from "../ui/Loading";
 
-interface Props {
-  id: string;
-}
 
 type ProfileField =
   | "first_name"
@@ -86,7 +83,6 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
   const [frontImageUrl, setFrontImageUrl] = useState<string | null>(null);
   const [backImageUrl, setBackImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [newBalance, setNewBalance] = useState<number>()
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -174,7 +170,7 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
 
     try {
 
-      const parseNumber = (val: any) => {
+      const parseNumber = (val: number | string | null | undefined): number => {
         if (typeof val === "number") return val;
         if (typeof val === "string") {
           const parsed = parseFloat(val);
@@ -196,12 +192,10 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
       // Override balance update with newBalance if balance not explicitly edited
 
       updatedFields.balance = newBalance;
-      setNewBalance(newBalance)
-      console.log('new:' + newBalance)
 
 
 
-      const payload: Record<string, any> = {
+      const payload: Record<string, string | number | undefined> = {
         firstName: updatedFields.first_name,
         lastName: updatedFields.last_name,
         email: updatedFields.email,

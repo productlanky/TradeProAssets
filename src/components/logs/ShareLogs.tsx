@@ -39,7 +39,7 @@ export default function ShareLogs() {
         );
 
         setLogs(
-          documents.map((log: any) => ({
+          documents.map((log) => ({
             id: log.$id,
             shares: Number(log.shares),
             amount: Number(log.amount),

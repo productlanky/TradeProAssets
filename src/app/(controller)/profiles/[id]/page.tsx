@@ -3,8 +3,7 @@
 import React, { useEffect, useState, use } from "react"; 
 import AdminUserProfileEditor from "@/components/admin/AdminProfileEditor";
 import Link from "next/link";
-import { ChevronLeftIcon } from "@/icons"; 
-import { useRouter } from "next/navigation";
+import { ChevronLeftIcon } from "@/icons";
 import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import Loading from "@/components/ui/Loading";
@@ -37,8 +36,6 @@ export default function Page({ params }: Props) {
 
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const router = useRouter()
 
   useEffect(() => {
     const fetchUser = async () => {

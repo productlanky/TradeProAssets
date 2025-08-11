@@ -38,7 +38,7 @@ export default function RecentTransactions() {
           [Query.equal("userId", user.$id)]
         );
 
-        const transactions: Transaction[] = response.documents.map((doc: any) => ({
+        const transactions: Transaction[] = response.documents.map((doc) => ({
           id: doc.$id || doc.id,
           type: doc.type,
           amount: Number(doc.amount),

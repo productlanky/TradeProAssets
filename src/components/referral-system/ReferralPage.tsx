@@ -88,7 +88,7 @@ export default function ReferralPage() {
     }
 
     fetchReferralInfo();
-  }, [baseUrl]);
+  }, [baseUrl, totalReferred]);
 
 
   const qrRef = useRef<HTMLCanvasElement>(null);

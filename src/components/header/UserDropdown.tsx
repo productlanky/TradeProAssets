@@ -10,10 +10,19 @@ import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import { RiAdminFill } from "react-icons/ri";
 
+interface UserProfile {
+  $id: string;
+  labels?: string[];
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  // add more if needed
+}
+
 export default function UserDropdown() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [admin, setAdmin] = useState<'admin' | 'user'>();
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
@@ -26,8 +35,12 @@ export default function UserDropdown() {
       await logOut(); // ✅ deletes current session
       toast.success("Signed out successfully");
       router.push("/signin");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to sign out");
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to sign out");
+      }
     }
   }
 
@@ -193,17 +206,21 @@ export default function UserDropdown() {
               Support
             </DropdownItem>
           </li>
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              tag="a"
-              href={'/controlPanel'}
-              className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-            >
-              <RiAdminFill size={18} />
-              Admin Panel
-            </DropdownItem>
-          </li>
+          {
+            admin === "admin" && (
+              <li>
+                <DropdownItem
+                  onItemClick={closeDropdown}
+                  tag="a"
+                  href={'/controlPanel'}
+                  className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                >
+                  <RiAdminFill size={18} />
+                  Admin Panel
+                </DropdownItem>
+              </li>
+            )
+          }
         </ul>
         <button
           onClick={signOut}
