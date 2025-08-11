@@ -158,11 +158,17 @@ export default function DashboardPage() {
                     />
                 )}
 
-                <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 sm:p-6">
-                    <div className="flex items-center gap-3">
-                        <CopyLinkInput link={referralLink} />
+                {loading || showKycAlert ? (
+                    <Skeleton className="h-[40px] w-full rounded-xl" />
+                ) : (
+                    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 sm:p-6">
+                        <div className="flex items-center gap-3">
+                            <CopyLinkInput link={referralLink} />
+                        </div>
                     </div>
-                </div>
+                )}
+
+
             </div>
             <div className="col-span-12">
                 {loading || showKycAlert ? (
