@@ -14,7 +14,7 @@ import { Query } from "appwrite";
 import Loading from "../ui/Loading";
 import { RiStockFill } from "react-icons/ri";
 import { Skeleton } from "../ui/skeleton";
-import { fetchTeslaPrice } from "@/app/(admin)/(others-pages)/shares/page";
+import { fetchTeslaPrice } from "@/lib/appwrite/auth";
 
 interface Props {
     userId: string;

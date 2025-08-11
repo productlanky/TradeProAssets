@@ -9,7 +9,7 @@ import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID } from 
 import { Query } from "appwrite";
 import { getUser } from "@/lib/appwrite/auth";
 import { RiStockFill } from "react-icons/ri";
-import { fetchTeslaPrice } from "@/app/(admin)/(others-pages)/shares/page";
+import { fetchTeslaPrice } from "@/lib/appwrite/auth"; // Ensure this import is correct
 // import Badge from "../ui/badge/Badge"; // optional if needed
 
 export const EcommerceMetrics = () => {

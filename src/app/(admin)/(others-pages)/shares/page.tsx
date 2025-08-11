@@ -8,14 +8,7 @@ import { ID, Query } from "appwrite";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-
-
-export async function fetchTeslaPrice() {
-  const apiKey = "3d3ef5b8ef164f359687f7081be8d524";
-  const res = await fetch(`https://api.twelvedata.com/price?symbol=TSLA&apikey=${apiKey}`);
-  const data = await res.json();
-  return data.price;
-}
+import { fetchTeslaPrice } from "@/lib/appwrite/auth";
 
 export default function BuySharesPage() {
 

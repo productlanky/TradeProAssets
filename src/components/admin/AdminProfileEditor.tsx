@@ -13,7 +13,7 @@ import Link from "next/link";
 import { databases, DB_ID, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import Loading from "../ui/Loading";
-import { fetchTeslaPrice } from "@/app/(admin)/(others-pages)/shares/page";
+import { fetchTeslaPrice } from "@/lib/appwrite/auth";
 
 
 type ProfileField =
