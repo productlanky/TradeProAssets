@@ -26,18 +26,15 @@ export default function Home() {
   useEffect(() => {
     if (section && pathname !== "/dashboard") {
       navigate.replace('/dashboard')
+    }else {
+      navigate.replace('/signin')
     }
   }, [section, pathname, navigate]);
 
 
 
 
-  return (
-    <>
-      <iframe src="https://landing-page-three-murex-45.vercel.app//" frameBorder="0" className="h-screen w-screen"></iframe>
-    </>
-
-  );
+  return null;
 }
 
 
