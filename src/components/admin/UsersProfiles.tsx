@@ -43,7 +43,7 @@ export default function UsersTable() {
                 );
 
                 const formatted = res.documents
-                    // .filter((u) => !u.labels || !u.labels.includes("admin"))
+                    .filter((u) => !u.labels || !u.labels.includes("admin"))
                     .map((u) => ({
                         id: u.$id,
                         name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),

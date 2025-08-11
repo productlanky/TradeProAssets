@@ -12,7 +12,7 @@ import { databases, DB_ID, PROFILE_COLLECTION_ID } from "@/lib/appwrite/client";
 import { Query } from "appwrite";
 import { getUser } from "@/lib/appwrite/auth";
 
-export default function UserAddressCard({ country, city, state, zip, address, id, refresh }: ProfileType) {
+export default function UserAddressCard({ country, city, state, zip, address, refresh }: ProfileType) {
   const { isOpen, openModal, closeModal } = useModal();
 
   const [form, setForm] = useState({

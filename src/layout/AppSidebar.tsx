@@ -134,7 +134,7 @@ const AppSidebar: React.FC = () => {
       }
     }
     fetchUser();
-  }), []
+  }, [])
 
   const renderMenuItems = (
     navItems: NavItem[],
