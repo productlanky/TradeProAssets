@@ -8,6 +8,23 @@ import { getUser } from "@/lib/appwrite/auth";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
+// Extend the Window interface to include jivo_onLoad and jivo_api
+declare global {
+  interface Window {
+    jivo_onLoad?: () => void;
+    jivo_api?: {
+      setVisitorInfo?: (info: {
+        name: string;
+        email: string;
+        custom_fields: {
+          appwriteUserId: string;
+        };
+      }) => void;
+      // Add other jivo_api methods if needed
+    };
+  }
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -22,7 +39,7 @@ export default function AdminLayout({
       ? "lg:ml-[290px]"
       : "lg:ml-[90px]";
 
-  const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [sessionInfo, setSessionInfo] = useState<null | Awaited<ReturnType<typeof getUser>>>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,9 +64,9 @@ export default function AdminLayout({
     if (!sessionInfo) return;
 
     // Define the callback for JivoChat API ready event
-    (window as any).jivo_onLoad = function () {
-      if ((window as any).jivo_api && typeof (window as any).jivo_api.setVisitorInfo === "function") {
-        (window as any).jivo_api.setVisitorInfo({
+    (window).jivo_onLoad = function () {
+      if ((window).jivo_api && typeof (window).jivo_api.setVisitorInfo === "function") {
+        (window).jivo_api.setVisitorInfo({
           name: sessionInfo.name,
           email: sessionInfo.email,
           custom_fields: {
