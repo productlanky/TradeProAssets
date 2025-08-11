@@ -22,12 +22,12 @@ export default function AdminLayout({
       ? "lg:ml-[290px]"
       : "lg:ml-[90px]";
 
-  const [sessionInfo, setSessionInfo] = useState<ReturnType<typeof getUser> extends Promise<infer T> ? T | null : null>(null);
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true)
     const fetchSession = async () => {
+      setLoading(true);
       const data = await getUser();
       setSessionInfo(data);
       setLoading(false);
@@ -35,32 +35,43 @@ export default function AdminLayout({
     fetchSession();
   }, []);
 
-
-  // Redirect if no session, but only after initial check
+  // Redirect if no session
   useEffect(() => {
     if (!loading && !sessionInfo) {
-      router.replace("/signin")
+      router.replace("/signin");
     }
   }, [loading, sessionInfo, router]);
 
-  if (loading || !sessionInfo) {
-    // Prevents premature render while checking session
-    return null;
-  }
+  // Setup JivoChat visitor info after user and script are ready
+  useEffect(() => {
+    if (!sessionInfo) return;
 
+    // Define the callback for JivoChat API ready event
+    (window as any).jivo_onLoad = function () {
+      if ((window as any).jivo_api && typeof (window as any).jivo_api.setVisitorInfo === "function") {
+        (window as any).jivo_api.setVisitorInfo({
+          name: sessionInfo.name,
+          email: sessionInfo.email,
+          custom_fields: {
+            appwriteUserId: sessionInfo.$id,
+          },
+        });
+      }
+    };
+  }, [sessionInfo]);
+
+  if (loading || !sessionInfo) {
+    return null; // or loading spinner
+  }
 
   return (
     <div className="min-h-screen xl:flex">
-      {/* Sidebar and Backdrop */}
       <AppSidebar />
       <Backdrop />
-      {/* Main Content Area */}
       <div
-        className={`flex-1 transition-all  duration-300 ease-in-out ${mainContentMargin}`}
+        className={`flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}
       >
-        {/* Header */}
         <AppHeader />
-        {/* Page Content */}
         <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">{children}</div>
       </div>
     </div>

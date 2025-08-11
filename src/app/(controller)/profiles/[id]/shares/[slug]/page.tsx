@@ -1,6 +1,5 @@
 'use client'
 
-
 import AdminUserStockTable from '@/components/admin/AdminUserStockTable'
 import { ChevronLeftIcon } from '@/icons';
 import Link from 'next/link';

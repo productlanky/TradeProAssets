@@ -6,6 +6,7 @@ import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import { getUser } from "@/lib/appwrite/auth";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
 export default function AdminLayout({
@@ -61,6 +62,7 @@ export default function AdminLayout({
         {/* Page Content */}
         <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">{children}</div>
       </div>
+      <Script src="//code.jivosite.com/widget/w6GDGUb46u" async></Script>
     </div>
   );
 }
