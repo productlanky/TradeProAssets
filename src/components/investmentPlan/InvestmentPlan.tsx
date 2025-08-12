@@ -184,7 +184,7 @@ export default function InvestmentPlansPage() {
               </li>
               <li>
                 <span className="font-medium">Minimum Amount:</span> $
-                {plan.min_amount}
+                {plan.min_amount.toLocaleString()}
               </li>
             </ul>
           </div>

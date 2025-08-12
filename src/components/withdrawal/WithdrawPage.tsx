@@ -122,7 +122,7 @@ export default function WithdrawPage() {
         }
 
         if (data.amount > maxWithdrawAmount) {
-            toast.error(`Limit exceeded. Max allowed: ${maxWithdrawAmount}`);
+            toast.error(`Limit exceeded. Max allowed: $${maxWithdrawAmount}`);
             return;
         }
 
