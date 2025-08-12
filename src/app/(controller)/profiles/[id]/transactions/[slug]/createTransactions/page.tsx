@@ -81,13 +81,13 @@ export default function CreateTransactionPage({ params }: { params: Promise<{ id
         );
 
         const userDoc = profileRes.documents[0];
-        let currentBalance = userDoc.balance || 0;
-        let currentDeposit = userDoc.totalDeposit || 0;
-        let newBalance =
+        const currentBalance = userDoc.balance || 0;
+        const currentDeposit = userDoc.totalDeposit || 0;
+        const newBalance =
           type === "deposit"
             ? currentBalance + parseFloat(amount)
             : currentBalance - parseFloat(amount);
-        let newDeposit =
+        const newDeposit =
           type === "deposit"
             ? currentDeposit + parseFloat(amount)
             : currentDeposit - parseFloat(amount);
