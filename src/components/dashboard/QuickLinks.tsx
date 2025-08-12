@@ -7,6 +7,7 @@ import {
   BriefcaseIcon,
   UserIcon,
 } from "lucide-react";
+import { RiStockFill } from "react-icons/ri";
 
 const links = [
   {
@@ -28,11 +29,18 @@ const links = [
     bg: "bg-green-100 dark:bg-green-600/20",
   },
   {
+    href: "/shares",
+    label: "Shares",
+    icon: <RiStockFill className="w-5 h-5 text-indigo-600" />,
+    bg: "bg-indigo-100 dark:bg-indigo-600/20",
+  },
+  {
     href: "/profile",
     label: "Profile",
     icon: <UserIcon className="w-5 h-5 text-purple-600" />,
     bg: "bg-purple-100 dark:bg-purple-600/20",
   },
+
 ];
 
 export default function QuickLinks() {
@@ -41,7 +49,7 @@ export default function QuickLinks() {
       <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-5">
         Quick Links
       </h3>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         {links.map((link) => (
           <Link
             href={link.href}
