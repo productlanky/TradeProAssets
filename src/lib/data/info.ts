@@ -24,7 +24,7 @@ export const plan = [
     description: "Basic plan for new users",
     interest_rate: 0.05,
     duration_days: 30,
-    min_amount: 1600,
+    min_amount: 3200,
   },
     {
     id: "2",
@@ -32,7 +32,7 @@ export const plan = [
     description: "Moderate risk investment",
     interest_rate: 0.08,
     duration_days: 60,
-    min_amount: 4800,
+    min_amount: 6900,
   },
   {
     id: "3",
@@ -40,7 +40,7 @@ export const plan = [
     description: "Higher return plan",
     interest_rate: 0.10,
     duration_days: 90,
-    min_amount: 14400,
+    min_amount: 14780,
   },
   {
     id: "4",
