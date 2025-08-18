@@ -14,10 +14,10 @@ import { fetchTeslaPrice } from "@/lib/appwrite/auth"; // Ensure this import is 
 
 export const EcommerceMetrics = () => {
   const [loading, setLoading] = useState(true);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [totalDeposit, setTotalDeposit] = useState<number | null>(null);
-  const [totalShares, setTotalShare] = useState<number | null>(null);
-  const [profit, setProfit] = useState<number | null>(null);
+  const [balance, setBalance] = useState<number | null>(0);
+  const [totalDeposit, setTotalDeposit] = useState<number | null>(0);
+  const [totalShares, setTotalShare] = useState<number | null>(0);
+  const [profit, setProfit] = useState<number | null>(0);
   const [sharePrice, setSharePrice] = useState(0)
 
 
