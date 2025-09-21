@@ -23,7 +23,7 @@ interface UserRow {
     gender: string;
     country: string;
     phone: string;
-    balance: number;
+    // balance: number;
     created_at: string;
 }
 
@@ -43,7 +43,7 @@ export default function UsersTable() {
                 );
 
                 const formatted = res.documents
-                    .filter((u) => !u.labels || !u.labels.includes("admin"))
+                    // .filter((u) => !u.labels || !u.labels.includes("admin"))
                     .map((u) => ({
                         id: u.$id,
                         name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
@@ -52,7 +52,7 @@ export default function UsersTable() {
                         gender: u.gender ?? "—",
                         country: u.country ?? "—",
                         phone: u.phone ?? "—",
-                        balance: parseFloat(u.balance) || 0,
+                        // balance: parseFloat(u.balance) || 0,
                         created_at: u.$createdAt
                     }));
 
@@ -112,9 +112,9 @@ export default function UsersTable() {
                                     <TableCell isHeader className="px-5 py-3 text-theme-xs text-gray-500 dark:text-gray-400">
                                         Phone
                                     </TableCell>
-                                    <TableCell isHeader className="px-5 py-3 text-theme-xs text-gray-500 dark:text-gray-400">
+                                    {/* <TableCell isHeader className="px-5 py-3 text-theme-xs text-gray-500 dark:text-gray-400">
                                         Balance
-                                    </TableCell>
+                                    </TableCell> */}
                                     <TableCell isHeader className="px-5 py-3 text-theme-xs text-gray-500 dark:text-gray-400">
                                         Status
                                     </TableCell>
@@ -158,9 +158,9 @@ export default function UsersTable() {
                                         <TableCell className="px-4 py-3 text-theme-sm text-start text-gray-500 dark:text-gray-400">
                                             {user.phone}
                                         </TableCell>
-                                        <TableCell className="px-4 py-3 text-theme-sm text-start text-gray-800 dark:text-white">
+                                        {/* <TableCell className="px-4 py-3 text-theme-sm text-start text-gray-800 dark:text-white">
                                             ${user.balance.toFixed(2)}
-                                        </TableCell>
+                                        </TableCell> */}
                                         <TableCell className="px-4 py-3 text-start">
                                             <Badge
                                                 size="sm"

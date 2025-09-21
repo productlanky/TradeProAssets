@@ -80,101 +80,198 @@ export default function AdminUserTransactionsTable({ userId }: Props) {
     }, [userId]);
 
 
-    const handleStatusChange = async (id: string, newStatus: string) => {
-        const tx = transactions.find((t) => String(t.id) === id);
-        if (!tx) return;
+    // const handleStatusChange = async (id: string, newStatus: string) => {
+    //     const tx = transactions.find((t) => String(t.id) === id);
+    //     if (!tx) return;
 
-        const { amount, type, status: oldStatus } = tx;
+    //     const { amount, type, status: oldStatus } = tx;
 
-        try {
-            // ✅ Update transaction status
-            await databases.updateDocument(
-                DB_ID,
-                TRANSACTION_COLLECTION,
-                id,
-                { status: newStatus }
-            );
+    //     try {
+    //         // ✅ Update transaction status
+    //         await databases.updateDocument(
+    //             DB_ID,
+    //             TRANSACTION_COLLECTION,
+    //             id,
+    //             { status: newStatus }
+    //         );
 
-            // ✅ Prepare notification message
-            const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
-            const message = `${capitalizedType} of $${amount} was ${newStatus}`;
+    //         // ✅ Prepare notification message
+    //         const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
+    //         const message = `${capitalizedType} of $${amount} was ${newStatus}`;
 
-            // ✅ Send notification
-            await databases.createDocument(
-                DB_ID,
-                NOTIFICATION_COLLECTION,
-                ID.unique(),
-                {
-                    userId: userId,
-                    title: "Transaction Status Updated",
-                    message,
-                    type: "transaction",
-                    read: false,
-                }
-            );
+    //         // ✅ Send notification
+    //         await databases.createDocument(
+    //             DB_ID,
+    //             NOTIFICATION_COLLECTION,
+    //             ID.unique(),
+    //             {
+    //                 userId: userId,
+    //                 title: "Transaction Status Updated",
+    //                 message,
+    //                 type: "transaction",
+    //                 read: false,
+    //             }
+    //         );
 
-            // ✅ Get current balance
-            const profileRes = await databases.listDocuments(
-                DB_ID,
-                PROFILE_COLLECTION_ID,
-                [Query.equal("userId", userId)]
-            );
+    //         // ✅ Get current balance
+    //         const profileRes = await databases.listDocuments(
+    //             DB_ID,
+    //             PROFILE_COLLECTION_ID,
+    //             [Query.equal("userId", userId)]
+    //         );
 
-            const profileDoc = profileRes.documents[0];
-            let newBalance = profileDoc?.totalDeposit ?? 0;
-            let newBalanc = profileDoc?.balance ?? 0;
-            let newAmount = profileDoc?.balance ?? 0;
+    //         const profileDoc = profileRes.documents[0];
+    //         let newBalance = profileDoc?.totalDeposit ?? 0;
+    //         let newBalanc = profileDoc?.balance ?? 0;
+    //         let newAmount = profileDoc?.balance ?? 0;
 
-            const wasApproved = oldStatus === "approved";
-            const willBeApproved = newStatus === "approved";
+    //         const wasApproved = oldStatus === "approved";
+    //         const willBeApproved = newStatus === "approved";
 
-            // ✅ Adjust balance only when approval status changes
-            if (!wasApproved && willBeApproved) {
-                newBalance += type === "deposit" ? amount : -amount;
-                newBalanc += type === "deposit" ? amount : -amount;
-                newAmount += type === "withdrawal" ? -amount : amount;
-            } else if (wasApproved && !willBeApproved) {
-                newBalance += type === "deposit" ? -amount : amount;
-                newBalanc += type === "deposit" ? -amount : amount;
-                newAmount += type === "withdrawal" ? amount : -amount;
+    //         // ✅ Adjust balance only when approval status changes
+    //         if (!wasApproved && willBeApproved) {
+    //             newBalance += type === "deposit" ? amount : -amount;
+    //             newBalanc += type === "deposit" ? amount : -amount;
+    //             newAmount += type === "withdrawal" ? -amount : amount;
+    //         } else if (wasApproved && !willBeApproved) {
+    //             newBalance += type === "deposit" ? -amount : amount;
+    //             newBalanc += type === "deposit" ? -amount : amount;
+    //             newAmount += type === "withdrawal" ? amount : -amount;
+    //         }
+    //         // ✅ Update profile balance if changed
+    //         if (profileDoc && type === 'deposit') {
+    //             await databases.updateDocument(
+    //                 DB_ID,
+    //                 PROFILE_COLLECTION_ID,
+    //                 profileDoc.$id,
+    //                 {
+    //                     totalDeposit: newBalance,
+    //                     balance: newBalanc
+    //                 }
+    //             );
+    //         } else {
+    //             await databases.updateDocument(
+    //                 DB_ID,
+    //                 PROFILE_COLLECTION_ID,
+    //                 profileDoc.$id,
+    //                 {
+    //                     balance: newAmount
+    //                 }
+    //             );
+    //         }
+
+
+    //         // ✅ Update local state
+    //         setTransactions((prev) =>
+    //             prev.map((t) =>
+    //                 String(t.id) === id ? { ...t, status: newStatus as Transaction["status"] } : t
+    //             )
+    //         );
+
+    //         toast.success("Transaction status and balance updated");
+    //     } catch (error) {
+    //         console.error(error);
+    //         toast.error("Failed to update status");
+    //     }
+    // };
+
+const handleStatusChange = async (id: string, newStatus: string) => {
+    const tx = transactions.find((t) => String(t.id) === id);
+    if (!tx) return;
+
+    const { amount, type, status: oldStatus } = tx;
+
+    try {
+        // ✅ Update transaction status
+        await databases.updateDocument(
+            DB_ID,
+            TRANSACTION_COLLECTION,
+            id,
+            { status: newStatus }
+        );
+
+        // ✅ Prepare notification message
+        const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
+        const message = `${capitalizedType} of $${amount} was ${newStatus}`;
+
+        // ✅ Send notification
+        await databases.createDocument(
+            DB_ID,
+            NOTIFICATION_COLLECTION,
+            ID.unique(),
+            {
+                userId,
+                title: "Transaction Status Updated",
+                message,
+                type: "transaction",
+                read: false,
             }
-            // ✅ Update profile balance if changed
-            if (profileDoc && type === 'deposit') {
-                await databases.updateDocument(
-                    DB_ID,
-                    PROFILE_COLLECTION_ID,
-                    profileDoc.$id,
-                    {
-                        totalDeposit: newBalance,
-                        balance: newBalanc
-                    }
-                );
-            } else {
-                await databases.updateDocument(
-                    DB_ID,
-                    PROFILE_COLLECTION_ID,
-                    profileDoc.$id,
-                    {
-                        balance: newAmount
-                    }
-                );
+        );
+
+        // ✅ Get current profile
+        const profileRes = await databases.listDocuments(
+            DB_ID,
+            PROFILE_COLLECTION_ID,
+            [Query.equal("userId", userId)]
+        );
+        const profileDoc = profileRes.documents[0];
+        if (!profileDoc) throw new Error("Profile not found");
+
+        let newBalance = profileDoc.balance ?? 0;
+        let newTotalDeposit = profileDoc.totalDeposit ?? 0;
+
+        const wasApproved = oldStatus === "approved";
+        const willBeApproved = newStatus === "approved";
+        const willBeRejected = newStatus === "rejected";
+
+        // ✅ Balance logic
+        if (!wasApproved && willBeApproved) {
+            // Approve transaction
+            if (type === "deposit") {
+                newBalance += amount;
+                newTotalDeposit += amount;
+            } else if (type === "withdrawal") {
+                newBalance -= amount;
             }
-
-
-            // ✅ Update local state
-            setTransactions((prev) =>
-                prev.map((t) =>
-                    String(t.id) === id ? { ...t, status: newStatus as Transaction["status"] } : t
-                )
-            );
-
-            toast.success("Transaction status and balance updated");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to update status");
+        } else if (wasApproved && !willBeApproved) {
+            // Undo approval
+            if (type === "deposit") {
+                newBalance -= amount;
+                newTotalDeposit -= amount;
+            } else if (type === "withdrawal") {
+                newBalance += amount;
+            }
+        } else if (willBeRejected) {
+            // Refund rejected withdrawals
+            if (type === "withdrawal") {
+                newBalance += amount;
+            }
+            // (Optional) If you also want to "remove" rejected deposits, uncomment:
+            // if (type === "deposit") {
+            //     newBalance -= amount;
+            //     newTotalDeposit -= amount;
+            // }
         }
-    };
 
+        // ✅ Update profile
+        await databases.updateDocument(DB_ID, PROFILE_COLLECTION_ID, profileDoc.$id, {
+            balance: newBalance,
+            totalDeposit: newTotalDeposit,
+        });
+
+        // ✅ Update local state
+        setTransactions((prev) =>
+            prev.map((t) =>
+                String(t.id) === id ? { ...t, status: newStatus as Transaction["status"] } : t
+            )
+        );
+
+        toast.success("Transaction status and balance updated");
+    } catch (error) {
+        console.error(error);
+        toast.error("Failed to update status");
+    }
+};
 
 
     if (loading) return <Loading />;

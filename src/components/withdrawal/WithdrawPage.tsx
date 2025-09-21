@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { validate as validateBitcoin } from "bitcoin-address-validation";
 import WithdrawAlert from "./WithdrawAlert";
 import WithdrawForm, { WithdrawFormFields } from "./WithdrawForm";
-import { getUser } from "@/lib/appwrite/auth";
-import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
+import { fetchTeslaPrice, getUser } from "@/lib/appwrite/auth";
+import { databases, DB_ID, NOTIFICATION_COLLECTION, PROFILE_COLLECTION_ID, STOCKLOG_COLLECTION_ID, TRANSACTION_COLLECTION } from "@/lib/appwrite/client";
 import { ID, Query } from "appwrite";
 import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,7 @@ type Profile = {
     id: string;
     profileId: string;
     balance: number;
+    profit: number;
     withdrawal_password?: string;
     tiers?: Tier[];
     kycStatus?: string; // Added for KYC status
@@ -32,6 +33,9 @@ export default function WithdrawPage() {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [maxWithdrawAmount, setMaxWithdrawAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [totalShares, setTotalShare] = useState<number | null>(0);
+    const [sharePrice, setSharePrice] = useState(0)
+    const [balance, setBalance] = useState(0)
 
     const router = useRouter();
     const {
@@ -43,6 +47,12 @@ export default function WithdrawPage() {
     });
 
     useEffect(() => {
+
+        fetchTeslaPrice().then(price => {
+            setSharePrice(parseFloat(price));
+            console.log("Tesla Stock Price:", price);
+        });
+
         (async () => {
             try {
                 // 1️⃣ Get logged-in user
@@ -70,14 +80,25 @@ export default function WithdrawPage() {
                     withdrawal_password: profileData.withdrawalPassword,
                     tiers: profileData.tierLevel,
                     kycStatus: profileData.kycStatus,
+                    profit: profileData.profit
                 };
                 setProfile(mappedProfile);
 
                 console.log("Profile loaded:", mappedProfile);
                 setMaxWithdrawAmount(profileData.withdrawalLimit);
 
+                // Get all transactions for the current user
+                const { documents } = await databases.listDocuments(DB_ID, STOCKLOG_COLLECTION_ID, [
+                    Query.equal("userId", user.$id)
+                ]);
+
+                // Sum quantities (positive for buys, negative for sells)
+                const totalShare = documents.reduce((sum, tx) => sum + (tx.shares || 0), 0) || 0;
+
+                setTotalShare(totalShare)
 
                 setIsLoading(false);
+
             } catch (error) {
                 console.error("Error loading profile/KYC:", error);
                 toast.error("Failed to load profile.");
@@ -116,8 +137,8 @@ export default function WithdrawPage() {
             return;
         }
 
-        if (data.amount > profile.balance) {
-            toast.error("Insufficient balance.");
+        if (data.amount > (profile.balance + profile.profit + ((totalShares || 0) * sharePrice))) {
+            toast.error(profile.balance + profile.profit + ((totalShares || 0) * sharePrice));
             return;
         }
 
