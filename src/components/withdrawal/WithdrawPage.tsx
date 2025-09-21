@@ -34,8 +34,7 @@ export default function WithdrawPage() {
     const [maxWithdrawAmount, setMaxWithdrawAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [totalShares, setTotalShare] = useState<number | null>(0);
-    const [sharePrice, setSharePrice] = useState(0)
-    const [balance, setBalance] = useState(0)
+    const [sharePrice, setSharePrice] = useState(0) 
 
     const router = useRouter();
     const {
