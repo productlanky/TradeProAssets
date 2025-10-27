@@ -53,7 +53,7 @@ export const EcommerceMetrics = () => {
         const totalShare = documents.reduce((sum, tx) => sum + (tx.shares || 0), 0) || 0;
 
 
-        setBalance(profile?.balance || 0);
+        setBalance(profile?.totalDeposit || 0);
         setTotalShare(totalShare)
         setTotalDeposit(profile?.totalDeposit || 0);
         setProfit(profile?.profit || 0)

@@ -127,7 +127,7 @@ export default function AdminUserProfileCard({ id }: { id: string }) {
         city: doc.city,
         zip: doc.zip,
         address: doc.address,
-        balance: ((parseFloat(doc.balance) || 0) +
+        balance: ((parseFloat(doc.totalDeposit) || 0) +
           (parseFloat(doc.profit) || 0) +
           ((totalShare || 0) * teslaPrice)),
         dob: doc.dob,
