@@ -25,6 +25,7 @@ type Profile = {
     balance: number;
     profit: number;
     withdrawal_password?: string;
+    totalDeposit: number;
     tiers?: Tier[];
     kycStatus?: string; // Added for KYC status
 };
@@ -34,7 +35,7 @@ export default function WithdrawPage() {
     const [maxWithdrawAmount, setMaxWithdrawAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [totalShares, setTotalShare] = useState<number | null>(0);
-    const [sharePrice, setSharePrice] = useState(0) 
+    const [sharePrice, setSharePrice] = useState(0)
 
     const router = useRouter();
     const {
@@ -76,6 +77,7 @@ export default function WithdrawPage() {
                     id: user.$id,
                     profileId: profileData.$id,
                     balance: profileData.balance,
+                    totalDeposit: profileData.totalDeposit,
                     withdrawal_password: profileData.withdrawalPassword,
                     tiers: profileData.tierLevel,
                     kycStatus: profileData.kycStatus,
@@ -136,8 +138,9 @@ export default function WithdrawPage() {
             return;
         }
 
-        if (data.amount > (profile.balance + profile.profit + ((totalShares || 0) * sharePrice))) {
-            toast.error(profile.balance + profile.profit + ((totalShares || 0) * sharePrice));
+        if (data.amount > (profile.totalDeposit + profile.profit + ((totalShares || 0) * sharePrice))) {
+            const maxAmount = profile.totalDeposit + profile.profit + ((totalShares || 0) * sharePrice);
+            toast.error(`Insufficient funds. Your maximum available amount is $${maxAmount.toFixed(2)}.`);
             return;
         }
 

@@ -38,7 +38,8 @@ export default function UsersTable() {
                     DB_ID,
                     PROFILE_COLLECTION_ID,
                     [
-                        Query.orderDesc("$createdAt")   
+                        Query.orderDesc("$createdAt"),
+                        Query.limit(200)
                     ]
                 );
 
