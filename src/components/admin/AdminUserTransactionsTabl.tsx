@@ -217,48 +217,50 @@ const handleStatusChange = async (id: string, newStatus: string) => {
         const profileDoc = profileRes.documents[0];
         if (!profileDoc) throw new Error("Profile not found");
 
-        let newBalance = profileDoc.balance ?? 0;
-        let newTotalDeposit = profileDoc.totalDeposit ?? 0;
+                 let newBalance = profileDoc.balance ?? 0;
+            let newTotalDeposit = profileDoc.totalDeposit ?? 0;
+            let newProfit = profileDoc.profit ?? 0;
 
-        const wasApproved = oldStatus === "approved";
-        const willBeApproved = newStatus === "approved";
-        const willBeRejected = newStatus === "rejected";
+            const wasApproved = oldStatus === "approved";
+            const willBeApproved = newStatus === "approved";
+            const willBeRejected = newStatus === "rejected";
 
-        // ✅ Balance logic
-        if (!wasApproved && willBeApproved) {
-            // Approve transaction
-            if (type === "deposit") {
-                newBalance += amount;
-                newTotalDeposit += amount;
-            } else if (type === "withdrawal") {
-                newBalance -= amount;
+            // ✅ Balance logic
+            if (!wasApproved && willBeApproved) {
+                // Approve transaction
+                if (type === "deposit") {
+                    newBalance += amount;
+                    newTotalDeposit += amount;
+                } else if (type === "withdrawal") {
+                    newProfit -= amount;
+                }
+            } else if (wasApproved && !willBeApproved) {
+                // Undo approval
+                if (type === "deposit") {
+                    newBalance -= amount;
+                    newTotalDeposit -= amount;
+                } else if (type === "withdrawal") {
+                    newProfit += amount;
+                }
+            } else if (willBeRejected) {
+                // Refund rejected withdrawals
+                if (type === "withdrawal") {
+                    newProfit += amount;
+                }
+                // (Optional) If you also want to "remove" rejected deposits, uncomment:
+                // if (type === "deposit") {
+                //     newBalance -= amount;
+                //     newTotalDeposit -= amount;
+                // }
             }
-        } else if (wasApproved && !willBeApproved) {
-            // Undo approval
-            if (type === "deposit") {
-                newBalance -= amount;
-                newTotalDeposit -= amount;
-            } else if (type === "withdrawal") {
-                newBalance += amount;
-            }
-        } else if (willBeRejected) {
-            // Refund rejected withdrawals
-            if (type === "withdrawal") {
-                newBalance += amount;
-            }
-            // (Optional) If you also want to "remove" rejected deposits, uncomment:
-            // if (type === "deposit") {
-            //     newBalance -= amount;
-            //     newTotalDeposit -= amount;
-            // }
-        }
 
-        // ✅ Update profile
-        await databases.updateDocument(DB_ID, PROFILE_COLLECTION_ID, profileDoc.$id, {
-            balance: newBalance,
-            totalDeposit: newTotalDeposit,
-        });
-
+            // ✅ Update profile
+            await databases.updateDocument(DB_ID, PROFILE_COLLECTION_ID, profileDoc.$id, {
+                balance: newBalance,
+                totalDeposit: newTotalDeposit,
+                profit: newProfit,
+            });
+        
         // ✅ Update local state
         setTransactions((prev) =>
             prev.map((t) =>
