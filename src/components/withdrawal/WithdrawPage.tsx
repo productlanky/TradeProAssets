@@ -185,7 +185,7 @@ export default function WithdrawPage() {
                 DB_ID,
                 PROFILE_COLLECTION_ID,
                 UserProfileId, {
-                profit: profile.profit - data.amount,
+                 balance: profile.balance - data.amount,
             });
 
             toast.success("Withdrawal submitted.");
